@@ -1,10 +1,8 @@
-// Reemplaza estos valores con los de tu proyecto Firebase:
-// Firebase Console -> Configuración del proyecto -> Tus apps -> app Web -> "Config"
 export const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_PROYECTO.firebaseapp.com",
-  projectId: "TU_PROYECTO",
-  storageBucket: "TU_PROYECTO.appspot.com",
-  messagingSenderId: "TU_SENDER_ID",
-  appId: "TU_APP_ID"
+  apiKey: "AIzaSyC3wjLRKhMy8fLOaKRqsmSiW945Kfp2_ys",
+  authDomain: "sturdy-yen-468004-p9.firebaseapp.com",
+  projectId: "sturdy-yen-468004-p9",
+  storageBucket: "sturdy-yen-468004-p9.firebasestorage.app",
+  messagingSenderId: "369180316378",
+  appId: "1:369180316378:web:6c2552e829844ee78b0be3"
 };
