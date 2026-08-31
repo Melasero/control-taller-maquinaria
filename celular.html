@@ -70,11 +70,13 @@
     display:block; font-size:12px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;
     color: var(--text-dim); margin-bottom:8px;
   }
-  input[type=text], select{
+  input[type=text], input[type=number], input[type=datetime-local], select{
     width:100%; background: var(--card); border:1px solid var(--border); border-radius:10px;
     padding:14px 14px; color: var(--text); font-family:'IBM Plex Sans', sans-serif; font-size:16px;
     appearance:none;
   }
+  input[type=datetime-local]{ color-scheme: dark; font-family:'IBM Plex Mono', monospace; font-size:15px; }
+  .field .hint{ font-size:11.5px; color: var(--text-faint); margin-top:6px; }
   select{
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="%238fa0b3"><path d="M5 7l5 6 5-6z"/></svg>');
     background-repeat:no-repeat; background-position: right 14px center;
@@ -177,6 +179,19 @@
       <label for="fFalla">Tipo de falla</label>
       <select id="fFalla"></select>
     </div>
+    <div class="field">
+      <label for="fFallaDesc">Descripción de la falla</label>
+      <input type="text" id="fFallaDesc" placeholder="Ej. Fuga de aceite en motor izquierdo" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="fHorometro">Horómetro (h)</label>
+      <input type="number" id="fHorometro" placeholder="Ej. 12450" min="0" step="1" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label for="fIngresoAt">Fecha y hora de ingreso</label>
+      <input type="datetime-local" id="fIngresoAt">
+      <div class="hint">Se llena sola con la hora actual — cámbiala solo si el ingreso fue antes.</div>
+    </div>
     <div class="field" style="margin-top:22px;">
       <button class="btn primary" id="btnIngreso">Registrar ingreso a taller</button>
     </div>
@@ -210,7 +225,8 @@ import {
   collection, addDoc, doc, updateDoc, onSnapshot, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import {
-  COLLECTION, ESTADOS, TIPOS_FALLA, UBICACIONES_SUGERIDAS, formatHMS, formatTime
+  COLLECTION, ESTADOS, TIPOS_FALLA, UBICACIONES_SUGERIDAS, formatHMS, formatTime,
+  toDatetimeLocal, fromDatetimeLocal
 } from "./shared.js";
 
 const statusEl = document.getElementById("status");
@@ -238,6 +254,12 @@ UBICACIONES_SUGERIDAS.forEach(u => {
   ubicDatalist.appendChild(opt);
 });
 
+const ingresoAtInput = document.getElementById("fIngresoAt");
+function resetIngresoAtInput() {
+  ingresoAtInput.value = toDatetimeLocal(Date.now());
+}
+resetIngresoAtInput();
+
 function showToast(msg, color) {
   const t = document.getElementById("toast");
   t.textContent = msg;
@@ -253,6 +275,10 @@ document.getElementById("btnIngreso").addEventListener("click", async () => {
   const empresa = document.getElementById("fEmpresa").value.trim();
   const ubicacion = document.getElementById("fUbicacion").value.trim();
   const tipoFalla = fallaSelect.value;
+  const descripcionFalla = document.getElementById("fFallaDesc").value.trim();
+  const horometroRaw = document.getElementById("fHorometro").value.trim();
+  const horometro = horometroRaw === "" ? null : Number(horometroRaw);
+  const ingresoAt = fromDatetimeLocal(ingresoAtInput.value) ?? Date.now();
 
   if (!equipo || !empresa || !ubicacion) {
     showToast("Completa equipo, empresa y ubicación", "var(--red)");
@@ -263,16 +289,19 @@ document.getElementById("btnIngreso").addEventListener("click", async () => {
   btn.disabled = true;
   try {
     await addDoc(collection(db, COLLECTION), {
-      equipo, empresa, ubicacion, tipoFalla,
+      equipo, empresa, ubicacion, tipoFalla, descripcionFalla, horometro,
       estado: ESTADOS.REPARACION,
-      ingresoAt: Date.now(),
+      ingresoAt,
       operativoAt: null,
       salidaAt: null
     });
     document.getElementById("fEquipo").value = "";
     document.getElementById("fEmpresa").value = "";
     document.getElementById("fUbicacion").value = "";
+    document.getElementById("fFallaDesc").value = "";
+    document.getElementById("fHorometro").value = "";
     fallaSelect.selectedIndex = 0;
+    resetIngresoAtInput();
     showToast(`${equipo} ingresado a taller`);
   } catch (e) {
     showToast("Error al guardar: " + e.message, "var(--red)");
@@ -318,9 +347,12 @@ function renderList() {
     const card = document.createElement("div");
     card.className = "eq-card st-" + v.estado + (v.id === selectedId ? " selected" : "");
     const since = v.estado === ESTADOS.REPARACION ? v.ingresoAt : v.operativoAt;
+    const horometroTxt = v.horometro != null ? `<span class="sep">&middot;</span>${v.horometro} h` : "";
+    const fallaDescTxt = v.descripcionFalla ? `<div class="eq-meta" style="margin-top:2px; text-transform:none; letter-spacing:0;">${v.descripcionFalla}</div>` : "";
     card.innerHTML = `
       <div class="eq-name">${v.equipo}</div>
-      <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}<span class="sep">&middot;</span>${v.tipoFalla}</div>
+      <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}<span class="sep">&middot;</span>${v.tipoFalla}${horometroTxt}</div>
+      ${fallaDescTxt}
       <div class="eq-foot">
         <span class="chip ${v.estado}">${v.estado === ESTADOS.REPARACION ? "En reparación" : "Standby"}</span>
         <span class="eq-time" data-since="${since}">${formatHMS(Date.now() - since)}</span>

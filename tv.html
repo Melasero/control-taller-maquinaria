@@ -200,9 +200,12 @@ function buildFallaCard(v){
   const card = document.createElement("div");
   card.className = "card red";
   card.dataset.id = v.id;
+  const horometroTxt = v.horometro != null ? `<span class="sep">&middot;</span>${v.horometro} h` : "";
+  const fallaDescTxt = v.descripcionFalla ? `<div class="eq-meta" style="margin-top:4px; text-transform:none; letter-spacing:0; color: var(--text-faint);">${v.descripcionFalla}</div>` : "";
   card.innerHTML = `
     <div class="eq-name">${v.equipo}</div>
-    <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}<span class="sep">&middot;</span>${v.tipoFalla}</div>
+    <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}<span class="sep">&middot;</span>${v.tipoFalla}${horometroTxt}</div>
+    ${fallaDescTxt}
     <div class="card-foot">
       <div><div class="timer" data-role="timer"></div><div class="timer-cap">tiempo en reparación</div></div>
     </div>
@@ -214,9 +217,10 @@ function buildStandbyCard(v){
   const card = document.createElement("div");
   card.className = "card yellow";
   card.dataset.id = v.id;
+  const horometroTxt = v.horometro != null ? `<span class="sep">&middot;</span>${v.horometro} h` : "";
   card.innerHTML = `
     <div class="eq-name">${v.equipo}</div>
-    <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}</div>
+    <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}${horometroTxt}</div>
     <div class="card-foot">
       <div><div class="timer" data-role="timer"></div><div class="timer-cap">tiempo en standby</div></div>
     </div>
