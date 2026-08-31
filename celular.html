@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Taller Móvil</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root{
+    --bg: #0a0e13;
+    --panel: #12181f;
+    --card: #181f28;
+    --card-2: #1d2530;
+    --border: #262f3a;
+    --text: #eaf0f5;
+    --text-dim: #8fa0b3;
+    --text-faint: #566373;
+    --accent: #5ec8f5;
+    --accent-dim: rgba(94,200,245,0.14);
+    --red: #f2495c;
+    --red-dim: rgba(242,73,92,0.14);
+    --yellow: #fbbf24;
+    --yellow-dim: rgba(251,191,36,0.14);
+    --green: #34d399;
+    --green-dim: rgba(52,211,153,0.14);
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    min-height:100vh;
+    padding-bottom: 100px;
+  }
+  header{
+    position:sticky; top:0; z-index:10;
+    background: linear-gradient(180deg, var(--bg) 70%, rgba(10,14,19,0));
+    padding: 18px 18px 10px;
+  }
+  .head-row{ display:flex; align-items:center; justify-content:space-between; }
+  h1{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:800;
+    font-size:26px;
+    text-transform:uppercase;
+    letter-spacing:0.02em;
+    margin:0;
+  }
+  .status{ display:flex; align-items:center; gap:7px; font-size:12px; color: var(--text-dim); }
+  .status .dot{ width:8px; height:8px; border-radius:50%; background: var(--green); flex-shrink:0; }
+  .status.off .dot{ background: var(--red); }
+
+  .tabs{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:16px; }
+  .tab{
+    padding:13px; text-align:center;
+    background: var(--card); border:1px solid var(--border); border-radius:10px;
+    font-weight:700; font-size:13px; letter-spacing:0.03em; text-transform:uppercase;
+    color: var(--text-dim); cursor:pointer;
+  }
+  .tab.active{ background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+  main{ padding: 18px; }
+  section{ display:none; }
+  section.active{ display:block; }
+
+  .field{ margin-bottom:16px; }
+  .field label{
+    display:block; font-size:12px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;
+    color: var(--text-dim); margin-bottom:8px;
+  }
+  input[type=text], select{
+    width:100%; background: var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:14px 14px; color: var(--text); font-family:'IBM Plex Sans', sans-serif; font-size:16px;
+    appearance:none;
+  }
+  select{
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="%238fa0b3"><path d="M5 7l5 6 5-6z"/></svg>');
+    background-repeat:no-repeat; background-position: right 14px center;
+  }
+  input:focus, select:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim); }
+
+  .btn{
+    width:100%; padding:16px; border:none; border-radius:10px; font-weight:700; font-size:15px;
+    letter-spacing:0.03em; text-transform:uppercase; cursor:pointer;
+  }
+  .btn.primary{ background: var(--accent); color:#04202b; }
+  .btn.primary:disabled{ background: var(--border); color: var(--text-faint); }
+
+  .search{ margin-bottom:14px; }
+
+  .empty{
+    text-align:center; color: var(--text-faint); font-size:14px; padding:30px 10px;
+    border:1px dashed var(--border); border-radius:10px;
+  }
+
+  .eq-list{ display:flex; flex-direction:column; gap:10px; }
+  .eq-card{
+    background: var(--card); border:1px solid var(--border); border-left:4px solid var(--border);
+    border-radius:10px; padding:14px 16px; cursor:pointer; transition: border-color .15s, background .15s;
+  }
+  .eq-card.st-reparacion{ border-left-color: var(--red); }
+  .eq-card.st-standby{ border-left-color: var(--yellow); }
+  .eq-card.selected{ background: var(--card-2); border-color: var(--accent); }
+  .eq-name{ font-weight:700; font-size:17px; }
+  .eq-meta{ font-size:12.5px; color: var(--text-dim); text-transform:uppercase; letter-spacing:0.03em; margin-top:4px; }
+  .eq-meta .sep{ color: var(--text-faint); margin:0 4px; }
+  .eq-foot{ display:flex; align-items:center; justify-content:space-between; margin-top:8px; }
+  .chip{
+    font-size:11px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;
+    padding:4px 9px; border-radius:999px;
+  }
+  .chip.reparacion{ background: var(--red-dim); color: var(--red); }
+  .chip.standby{ background: var(--yellow-dim); color: var(--yellow); }
+  .eq-time{ font-family:'IBM Plex Mono', monospace; font-size:13px; color: var(--text-dim); }
+
+  .actionbar{
+    position:fixed; left:0; right:0; bottom:0; z-index:20;
+    background: var(--panel); border-top:1px solid var(--border);
+    padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
+    transform: translateY(100%); transition: transform .2s ease;
+  }
+  .actionbar.open{ transform: translateY(0); }
+  .ab-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .ab-title{ font-size:12px; color: var(--text-dim); text-transform:uppercase; letter-spacing:0.05em; }
+  .ab-name{ font-weight:700; font-size:16px; margin-top:2px; }
+  .ab-close{ background:none; border:none; color: var(--text-faint); font-size:22px; line-height:1; cursor:pointer; padding:4px; }
+  .btn.standby{ background: var(--yellow); color:#2b1e02; }
+  .btn.entregar{ background: var(--green); color:#04241a; }
+
+  .confirm-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .btn.confirm{ background: var(--green); color:#04241a; }
+  .btn.confirm.red{ background: var(--red); color:#2b0407; }
+  .btn.cancel{ background: transparent; border:1px solid var(--border); color: var(--text-dim); }
+
+  .toast{
+    position:fixed; top:16px; left:50%; transform:translateX(-50%) translateY(-20px);
+    background: var(--card-2); border:1px solid var(--border); border-left:4px solid var(--green);
+    padding:12px 18px; border-radius:10px; font-size:14px; z-index:30;
+    opacity:0; transition: opacity .2s ease, transform .2s ease; pointer-events:none;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    max-width: calc(100vw - 40px);
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="head-row">
+    <h1>Taller Móvil</h1>
+    <div class="status" id="status"><span class="dot"></span><span id="statusText">conectando…</span></div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" data-tab="ingreso">Nuevo ingreso</div>
+    <div class="tab" data-tab="actualizar">Actualizar estado</div>
+  </div>
+</header>
+
+<main>
+  <section id="tab-ingreso" class="active">
+    <div class="field">
+      <label for="fEquipo">Equipo</label>
+      <input type="text" id="fEquipo" placeholder="Ej. Volquete CAT-01" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="fEmpresa">Empresa</label>
+      <input type="text" id="fEmpresa" placeholder="Ej. Transportes del Sur SAC" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="fUbicacion">Ubicación</label>
+      <input type="text" id="fUbicacion" list="ubicaciones" placeholder="Ej. Taller Central" autocomplete="off">
+      <datalist id="ubicaciones"></datalist>
+    </div>
+    <div class="field">
+      <label for="fFalla">Tipo de falla</label>
+      <select id="fFalla"></select>
+    </div>
+    <div class="field" style="margin-top:22px;">
+      <button class="btn primary" id="btnIngreso">Registrar ingreso a taller</button>
+    </div>
+  </section>
+
+  <section id="tab-actualizar">
+    <div class="field search">
+      <input type="text" id="fBuscar" placeholder="Buscar por equipo o empresa…" autocomplete="off">
+    </div>
+    <div class="eq-list" id="eqList"></div>
+    <div class="empty" id="eqEmpty" hidden>No hay equipos en taller.</div>
+  </section>
+</main>
+
+<div class="actionbar" id="actionbar">
+  <div class="ab-row">
+    <div>
+      <div class="ab-title">Equipo seleccionado</div>
+      <div class="ab-name" id="abName">—</div>
+    </div>
+    <button class="ab-close" id="abClose">&times;</button>
+  </div>
+  <div id="abAction"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { db } from "./firebase-init.js";
+import {
+  collection, addDoc, doc, updateDoc, onSnapshot, query, orderBy
+} from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+import {
+  COLLECTION, ESTADOS, TIPOS_FALLA, UBICACIONES_SUGERIDAS, formatHMS, formatTime
+} from "./shared.js";
+
+const statusEl = document.getElementById("status");
+const statusText = document.getElementById("statusText");
+
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll("main > section").forEach(s => s.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById("tab-" + tab.dataset.tab).classList.add("active");
+  });
+});
+
+const fallaSelect = document.getElementById("fFalla");
+TIPOS_FALLA.forEach(t => {
+  const opt = document.createElement("option");
+  opt.value = t; opt.textContent = t;
+  fallaSelect.appendChild(opt);
+});
+const ubicDatalist = document.getElementById("ubicaciones");
+UBICACIONES_SUGERIDAS.forEach(u => {
+  const opt = document.createElement("option");
+  opt.value = u;
+  ubicDatalist.appendChild(opt);
+});
+
+function showToast(msg, color) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.style.borderLeftColor = color || "var(--green)";
+  t.classList.add("show");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+// ---------- registrar ingreso ----------
+document.getElementById("btnIngreso").addEventListener("click", async () => {
+  const equipo = document.getElementById("fEquipo").value.trim();
+  const empresa = document.getElementById("fEmpresa").value.trim();
+  const ubicacion = document.getElementById("fUbicacion").value.trim();
+  const tipoFalla = fallaSelect.value;
+
+  if (!equipo || !empresa || !ubicacion) {
+    showToast("Completa equipo, empresa y ubicación", "var(--red)");
+    return;
+  }
+
+  const btn = document.getElementById("btnIngreso");
+  btn.disabled = true;
+  try {
+    await addDoc(collection(db, COLLECTION), {
+      equipo, empresa, ubicacion, tipoFalla,
+      estado: ESTADOS.REPARACION,
+      ingresoAt: Date.now(),
+      operativoAt: null,
+      salidaAt: null
+    });
+    document.getElementById("fEquipo").value = "";
+    document.getElementById("fEmpresa").value = "";
+    document.getElementById("fUbicacion").value = "";
+    fallaSelect.selectedIndex = 0;
+    showToast(`${equipo} ingresado a taller`);
+  } catch (e) {
+    showToast("Error al guardar: " + e.message, "var(--red)");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ---------- actualizar estado ----------
+const eqListEl = document.getElementById("eqList");
+const eqEmptyEl = document.getElementById("eqEmpty");
+const actionbar = document.getElementById("actionbar");
+const abName = document.getElementById("abName");
+const abAction = document.getElementById("abAction");
+const abClose = document.getElementById("abClose");
+
+let activos = [];
+let selectedId = null;
+let searchTerm = "";
+
+function closeActionbar() {
+  selectedId = null;
+  actionbar.classList.remove("open");
+  renderList();
+}
+abClose.addEventListener("click", closeActionbar);
+
+document.getElementById("fBuscar").addEventListener("input", (e) => {
+  searchTerm = e.target.value.trim().toLowerCase();
+  renderList();
+});
+
+function renderList() {
+  const filtered = activos.filter(v => {
+    if (!searchTerm) return true;
+    return v.equipo.toLowerCase().includes(searchTerm) || v.empresa.toLowerCase().includes(searchTerm);
+  });
+
+  eqListEl.innerHTML = "";
+  eqEmptyEl.hidden = filtered.length > 0;
+
+  filtered.forEach(v => {
+    const card = document.createElement("div");
+    card.className = "eq-card st-" + v.estado + (v.id === selectedId ? " selected" : "");
+    const since = v.estado === ESTADOS.REPARACION ? v.ingresoAt : v.operativoAt;
+    card.innerHTML = `
+      <div class="eq-name">${v.equipo}</div>
+      <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}<span class="sep">&middot;</span>${v.tipoFalla}</div>
+      <div class="eq-foot">
+        <span class="chip ${v.estado}">${v.estado === ESTADOS.REPARACION ? "En reparación" : "Standby"}</span>
+        <span class="eq-time" data-since="${since}">${formatHMS(Date.now() - since)}</span>
+      </div>
+    `;
+    card.addEventListener("click", () => selectEquipo(v.id));
+    eqListEl.appendChild(card);
+  });
+}
+
+function selectEquipo(id) {
+  selectedId = id;
+  const v = activos.find(x => x.id === id);
+  if (!v) return;
+  abName.textContent = v.equipo;
+  renderAction(v);
+  actionbar.classList.add("open");
+  renderList();
+}
+
+function renderAction(v) {
+  if (v.estado === ESTADOS.REPARACION) {
+    abAction.innerHTML = `<button class="btn standby" id="abBtn">Listo / Operativo</button>`;
+    document.getElementById("abBtn").addEventListener("click", () => confirmStep(v, "standby"));
+  } else if (v.estado === ESTADOS.STANDBY) {
+    abAction.innerHTML = `<button class="btn entregar" id="abBtn">Entregado a operador</button>`;
+    document.getElementById("abBtn").addEventListener("click", () => confirmStep(v, "entregado"));
+  }
+}
+
+function confirmStep(v, target) {
+  const label = target === "standby" ? "marcar OPERATIVO" : "marcar ENTREGADO";
+  abAction.innerHTML = `
+    <div class="ab-title" style="margin-bottom:10px;">¿Confirmar ${label} para ${v.equipo}?</div>
+    <div class="confirm-row">
+      <button class="btn cancel" id="abCancel">Cancelar</button>
+      <button class="btn confirm" id="abConfirm">Sí, confirmar</button>
+    </div>
+  `;
+  document.getElementById("abCancel").addEventListener("click", () => renderAction(v));
+  document.getElementById("abConfirm").addEventListener("click", async () => {
+    const ref = doc(db, COLLECTION, v.id);
+    const now = Date.now();
+    try {
+      if (target === "standby") {
+        await updateDoc(ref, { estado: ESTADOS.STANDBY, operativoAt: now });
+        showToast(`${v.equipo} pasó a Standby`);
+      } else {
+        await updateDoc(ref, { estado: ESTADOS.ENTREGADO, salidaAt: now });
+        showToast(`${v.equipo} entregado al operador`);
+      }
+      closeActionbar();
+    } catch (e) {
+      showToast("Error al actualizar: " + e.message, "var(--red)");
+    }
+  });
+}
+
+// live tick for elapsed times shown in the list
+setInterval(() => {
+  document.querySelectorAll(".eq-time[data-since]").forEach(el => {
+    const since = Number(el.dataset.since);
+    if (since) el.textContent = formatHMS(Date.now() - since);
+  });
+}, 1000);
+
+// ---------- realtime subscription ----------
+const q = query(collection(db, COLLECTION), orderBy("ingresoAt", "desc"));
+onSnapshot(q, (snap) => {
+  statusEl.classList.remove("off");
+  statusText.textContent = "sincronizado";
+  const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  activos = all.filter(v => v.estado !== ESTADOS.ENTREGADO);
+  renderList();
+}, (err) => {
+  statusEl.classList.add("off");
+  statusText.textContent = "sin conexión";
+  console.error(err);
+});
+</script>
+</body>
+</html>

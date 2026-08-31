@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Torre de Control · Taller</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap">
+<style>
+  :root{
+    --bg: #0a0e13;
+    --bg-grad: #0d1219;
+    --panel: #10151c;
+    --panel-2: #161d26;
+    --card: #1a222c;
+    --border: #232d38;
+    --text: #eaf0f5;
+    --text-dim: #8fa0b3;
+    --text-faint: #556475;
+    --accent: #5ec8f5;
+    --accent-dim: rgba(94,200,245,0.14);
+    --red: #f2495c;
+    --red-dim: rgba(242,73,92,0.12);
+    --red-line: rgba(242,73,92,0.4);
+    --yellow: #fbbf24;
+    --yellow-dim: rgba(251,191,36,0.12);
+    --yellow-line: rgba(251,191,36,0.4);
+    --yellow-bright: #fde047;
+    --green: #34d399;
+    --green-dim: rgba(52,211,153,0.12);
+    --green-line: rgba(52,211,153,0.4);
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; height:100%; }
+  body{
+    background:
+      radial-gradient(1200px 700px at 85% -10%, rgba(94,200,245,0.05), transparent 60%),
+      radial-gradient(1000px 600px at 5% 110%, rgba(52,211,153,0.04), transparent 60%),
+      linear-gradient(180deg, var(--bg), var(--bg-grad));
+    color: var(--text);
+    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    height:100vh; overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  @media (prefers-reduced-motion: reduce){ *{ animation-duration:0.01ms !important; transition-duration:0.01ms !important; } }
+
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 24px 44px 18px; border-bottom:1px solid var(--border); flex-shrink:0;
+  }
+  .brand-mark{ display:flex; align-items:center; gap:12px; }
+  .brand-mark .dot{ width:11px; height:11px; border-radius:50%; background: var(--accent); box-shadow:0 0 0 4px var(--accent-dim); }
+  h1{
+    font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:30px;
+    text-transform:uppercase; letter-spacing:0.03em; margin:0; line-height:1;
+  }
+  .sub{ font-size:13px; color: var(--text-dim); letter-spacing:0.07em; text-transform:uppercase; padding-left:23px; margin-top:5px; }
+  .clock-block{ text-align:right; }
+  .clock{
+    font-family:'Big Shoulders Display', sans-serif; font-weight:700; font-size:62px; line-height:1;
+    font-variant-numeric: tabular-nums;
+  }
+  .clock .secs{ color: var(--text-dim); font-size:0.55em; }
+  .date{ font-size:14px; color: var(--text-dim); text-transform:capitalize; margin-top:5px; }
+
+  .board{
+    flex:1; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1px;
+    background: var(--border); overflow:hidden; min-height:0;
+  }
+  .column{ background: var(--panel); display:flex; flex-direction:column; min-height:0; }
+  .col-head{ display:flex; align-items:center; justify-content:space-between; padding:18px 26px 14px; flex-shrink:0; }
+  .col-head .label{ display:flex; align-items:center; gap:11px; }
+  .ind{ width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+  .ind.red{ background: var(--red); box-shadow:0 0 0 4px var(--red-dim); }
+  .ind.yellow{ background: var(--yellow); box-shadow:0 0 0 4px var(--yellow-dim); }
+  .ind.green{ background: var(--green); box-shadow:0 0 0 4px var(--green-dim); }
+  .col-head h2{
+    font-family:'Big Shoulders Display', sans-serif; font-weight:700; font-size:21px;
+    text-transform:uppercase; letter-spacing:0.02em; margin:0;
+  }
+  .count{
+    font-family:'IBM Plex Mono', monospace; font-size:13px; font-weight:600; color: var(--text-dim);
+    background: var(--panel-2); border:1px solid var(--border); padding:4px 10px; border-radius:999px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .list{ flex:1; overflow-y:auto; padding:4px 20px 24px; display:flex; flex-direction:column; gap:10px; }
+  .list::-webkit-scrollbar{ width:7px; }
+  .list::-webkit-scrollbar-thumb{ background: var(--border); border-radius:4px; }
+
+  .empty{ color: var(--text-faint); font-size:13px; padding:18px 8px; text-align:center; border:1px dashed var(--border); border-radius:9px; margin-top:6px; }
+
+  .card{
+    background: var(--card); border:1px solid var(--border); border-radius:11px; padding:14px 16px;
+    transition: transform .35s cubic-bezier(.2,.8,.2,1), opacity .35s ease, box-shadow .3s ease, background .3s ease;
+  }
+  .card.red{ border-left:3px solid var(--red-line); }
+  .card.yellow{ border-left:3px solid var(--yellow-line); }
+  .card.green{ border-left:3px solid var(--green-line); }
+  .card.entering{ opacity:0; transform: translateY(-12px) scale(0.98); }
+  .card.leaving{ opacity:0 !important; transform: translateX(16px) scale(0.97) !important; }
+
+  .card.alert{
+    background: rgba(251,191,36,0.16);
+    border-left-color: var(--yellow-bright);
+    animation: alertPulse 1.1s ease-in-out infinite;
+  }
+  @keyframes alertPulse{
+    0%,100%{ box-shadow: 0 0 0 0 rgba(253,224,71,0.0); }
+    50%{ box-shadow: 0 0 22px 2px rgba(253,224,71,0.35); }
+  }
+  .alert-badge{
+    display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase;
+    color:#2b1e02; background: var(--yellow-bright); padding:3px 8px; border-radius:6px; margin-top:6px;
+  }
+
+  .eq-name{ font-weight:700; font-size:18px; line-height:1.2; }
+  .eq-meta{ font-size:12px; color: var(--text-dim); text-transform:uppercase; letter-spacing:0.03em; margin-top:5px; }
+  .eq-meta .sep{ color: var(--text-faint); margin:0 5px; }
+
+  .card-foot{ display:flex; align-items:baseline; justify-content:space-between; margin-top:10px; }
+  .timer{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:21px; font-variant-numeric: tabular-nums; }
+  .card.red .timer{ color: var(--red); }
+  .card.yellow .timer{ color: var(--yellow); }
+  .card.alert .timer{ color: var(--yellow-bright); }
+  .timer-cap{ font-size:10.5px; color: var(--text-faint); text-transform:uppercase; letter-spacing:0.06em; }
+
+  .summary-row{ display:flex; gap:16px; margin-top:8px; }
+  .summary-item .val{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:15px; color: var(--text); }
+  .summary-item .cap{ font-size:10px; color: var(--text-faint); text-transform:uppercase; letter-spacing:0.05em; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="brand-mark"><span class="dot"></span><h1>Torre de Control · Taller</h1></div>
+    <div class="sub">Estado de maquinaria en mantenimiento</div>
+  </div>
+  <div class="clock-block">
+    <div class="clock" id="clock">00:00<span class="secs">:00</span></div>
+    <div class="date" id="dateLabel">—</div>
+  </div>
+</div>
+
+<div class="board">
+  <div class="column">
+    <div class="col-head">
+      <div class="label"><span class="ind red"></span><h2>En mantenimiento</h2></div>
+      <div class="count" id="countFalla">0</div>
+    </div>
+    <div class="list" id="listFalla"></div>
+  </div>
+  <div class="column">
+    <div class="col-head">
+      <div class="label"><span class="ind yellow"></span><h2>Operativos en standby</h2></div>
+      <div class="count" id="countStandby">0</div>
+    </div>
+    <div class="list" id="listStandby"></div>
+  </div>
+  <div class="column">
+    <div class="col-head">
+      <div class="label"><span class="ind green"></span><h2>Últimos entregados</h2></div>
+      <div class="count" id="countEntregado">0</div>
+    </div>
+    <div class="list" id="listEntregado"></div>
+  </div>
+</div>
+
+<script type="module">
+import { db } from "./firebase-init.js";
+import { collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+import { ESTADOS, STANDBY_ALERT_MS, formatHMS, formatHM, formatTime } from "./shared.js";
+
+const DIAS = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+function pad(n){ return String(n).padStart(2,"0"); }
+
+const clockEl = document.getElementById("clock");
+const dateEl = document.getElementById("dateLabel");
+function tickClock(){
+  const d = new Date();
+  clockEl.innerHTML = pad(d.getHours())+":"+pad(d.getMinutes())+'<span class="secs">:'+pad(d.getSeconds())+'</span>';
+  dateEl.textContent = DIAS[d.getDay()]+" "+d.getDate()+" de "+MESES[d.getMonth()];
+}
+tickClock();
+setInterval(tickClock, 1000);
+
+const listFallaEl = document.getElementById("listFalla");
+const listStandbyEl = document.getElementById("listStandby");
+const listEntregadoEl = document.getElementById("listEntregado");
+const countFallaEl = document.getElementById("countFalla");
+const countStandbyEl = document.getElementById("countStandby");
+const countEntregadoEl = document.getElementById("countEntregado");
+
+const nodeMap = {};
+let fleet = [];
+
+function buildFallaCard(v){
+  const card = document.createElement("div");
+  card.className = "card red";
+  card.dataset.id = v.id;
+  card.innerHTML = `
+    <div class="eq-name">${v.equipo}</div>
+    <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}<span class="sep">&middot;</span>${v.tipoFalla}</div>
+    <div class="card-foot">
+      <div><div class="timer" data-role="timer"></div><div class="timer-cap">tiempo en reparación</div></div>
+    </div>
+  `;
+  return card;
+}
+
+function buildStandbyCard(v){
+  const card = document.createElement("div");
+  card.className = "card yellow";
+  card.dataset.id = v.id;
+  card.innerHTML = `
+    <div class="eq-name">${v.equipo}</div>
+    <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}</div>
+    <div class="card-foot">
+      <div><div class="timer" data-role="timer"></div><div class="timer-cap">tiempo en standby</div></div>
+    </div>
+    <div class="alert-badge" data-role="alert" hidden>Sin recoger +2h</div>
+  `;
+  return card;
+}
+
+function buildEntregadoCard(v){
+  const card = document.createElement("div");
+  card.className = "card green";
+  card.dataset.id = v.id;
+  const rep = v.operativoAt && v.ingresoAt ? v.operativoAt - v.ingresoAt : 0;
+  const stb = v.salidaAt && v.operativoAt ? v.salidaAt - v.operativoAt : 0;
+  card.innerHTML = `
+    <div class="eq-name">${v.equipo}</div>
+    <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}<span class="sep">&middot;</span>salió ${formatTime(v.salidaAt)}</div>
+    <div class="summary-row">
+      <div class="summary-item"><div class="val">${formatHM(rep)}</div><div class="cap">reparación</div></div>
+      <div class="summary-item"><div class="val">${formatHM(stb)}</div><div class="cap">standby</div></div>
+    </div>
+  `;
+  return card;
+}
+
+function renderList(container, items, builder, emptyText){
+  const existingIds = Object.keys(nodeMap).filter(id => nodeMap[id].parentNode === container);
+  const wantedIds = items.map(v => v.id);
+
+  existingIds.forEach(id => {
+    if(!wantedIds.includes(id)){
+      const node = nodeMap[id];
+      node.classList.add("leaving");
+      setTimeout(() => {
+        if(node.parentNode) node.parentNode.removeChild(node);
+        if(nodeMap[id] === node) delete nodeMap[id];
+      }, 360);
+    }
+  });
+
+  const placeholder = container.querySelector(".empty");
+  if(placeholder) placeholder.remove();
+
+  if(items.length === 0){
+    if(!container.querySelector(".empty")){
+      const e = document.createElement("div");
+      e.className = "empty";
+      e.textContent = emptyText;
+      container.appendChild(e);
+    }
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  items.forEach(v => {
+    let node = nodeMap[v.id];
+    if(!node || node.classList.contains("leaving") || node.parentNode !== container){
+      node = builder(v);
+      nodeMap[v.id] = node;
+      node.classList.add("entering");
+    }
+    frag.appendChild(node);
+  });
+  container.appendChild(frag);
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    items.forEach(v => { const n = nodeMap[v.id]; if(n) n.classList.remove("entering"); });
+  }));
+}
+
+function render(){
+  const enFalla = fleet.filter(v => v.estado === ESTADOS.REPARACION).sort((a,b) => a.ingresoAt - b.ingresoAt);
+  const enStandby = fleet.filter(v => v.estado === ESTADOS.STANDBY).sort((a,b) => a.operativoAt - b.operativoAt);
+  const entregados = fleet.filter(v => v.estado === ESTADOS.ENTREGADO).sort((a,b) => b.salidaAt - a.salidaAt).slice(0, 10);
+
+  countFallaEl.textContent = enFalla.length;
+  countStandbyEl.textContent = enStandby.length;
+  countEntregadoEl.textContent = entregados.length;
+
+  renderList(listFallaEl, enFalla, buildFallaCard, "Sin equipos en mantenimiento.");
+  renderList(listStandbyEl, enStandby, buildStandbyCard, "Sin equipos en standby.");
+  renderList(listEntregadoEl, entregados, buildEntregadoCard, "Aún no hay entregas registradas.");
+
+  tickTimers();
+}
+
+function tickTimers(){
+  fleet.forEach(v => {
+    const node = nodeMap[v.id];
+    if(!node) return;
+    if(v.estado === ESTADOS.REPARACION){
+      const timerEl = node.querySelector('[data-role="timer"]');
+      if(timerEl) timerEl.textContent = formatHMS(Date.now() - v.ingresoAt);
+    } else if(v.estado === ESTADOS.STANDBY){
+      const elapsed = Date.now() - v.operativoAt;
+      const timerEl = node.querySelector('[data-role="timer"]');
+      const alertEl = node.querySelector('[data-role="alert"]');
+      if(timerEl) timerEl.textContent = formatHMS(elapsed);
+      const isAlert = elapsed > STANDBY_ALERT_MS;
+      node.classList.toggle("alert", isAlert);
+      if(alertEl) alertEl.hidden = !isAlert;
+    }
+  });
+}
+
+setInterval(tickTimers, 1000);
+
+const q = query(collection(db, "equipos"), orderBy("ingresoAt", "desc"));
+onSnapshot(q, (snap) => {
+  fleet = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  render();
+}, (err) => console.error(err));
+</script>
+</body>
+</html>
