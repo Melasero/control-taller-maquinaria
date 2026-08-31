@@ -26,9 +26,14 @@ service cloud.firestore {
     match /equipos/{doc} {
       allow read, write: if true;
     }
+    match /config/{doc} {
+      allow read, write: if true;
+    }
   }
 }
 ```
+
+La colección `config` (documento `planSemanal`) guarda el % de avance del plan semanal del taller — es un dato aparte de los equipos, editable solo desde la pestaña "Plan Semanal" del celular.
 
 **Esto deja la colección abierta a cualquiera que tenga tu `apiKey`.** Es aceptable para una herramienta interna de bajo riesgo, pero si quieres restringirlo más adelante, la forma correcta es agregar Firebase Authentication (aunque sea anónima) y condicionar `allow` a `request.auth != null`.
 
@@ -62,12 +67,28 @@ Ambos incluyen: Equipo, Empresa, Ubicación, Tipo de Falla, Fecha Ingreso, Fecha
 | Campo | Tipo | Descripción |
 |---|---|---|
 | `equipo` | string | Ej. "Volquete CAT-01" |
-| `empresa` | string | Contrata dueña del equipo |
-| `ubicacion` | string | Ej. "Taller Central" |
-| `tipoFalla` | string | Mecánica / Eléctrica / Hidráulica / Mantenimiento Preventivo / Otro |
-| `estado` | string | `reparacion` \| `standby` \| `entregado` |
+| `empresa` | string | Contrata dueña del equipo (autocompleta MD, ST, OR, Komatsu — texto libre igual) |
+| `ubicacion` | string | Ej. "Taller F" |
+| `tipoFalla` | string | Mecánica / Eléctrica / Hidráulica / Soldadura / Llantería / Mantenimiento Preventivo / Otro |
+| `descripcionFalla` | string | Detalle libre de la falla (ej. "Fuga de aceite en motor izquierdo") |
+| `horometro` | number \| null | Lectura del horómetro al momento del ingreso |
+| `estado` | string | `reparacion` \| `standby` \| `entregado` \| `reingreso` (registro cerrado por una nueva avería, no se muestra en la TV) |
 | `ingresoAt` | number (ms) | Momento de ingreso a taller |
 | `operativoAt` | number \| null | Momento en que se marcó "Listo / Operativo" |
 | `salidaAt` | number \| null | Momento en que se marcó "Entregado a operador" |
+| `cierreAt` | number \| null | Momento en que el registro se cerró por un reingreso (solo si `estado` es `reingreso`) |
+| `prioridad` | string \| null | `"Crítico"` u omitido/null. Es lo único que se puede marcar — no hay "Media" ni "Baja" |
+| `avance` | number \| null | % de avance de la reparación (0–100), editable desde el celular mientras está en mantenimiento |
+| `bloqueadoPorRepuesto` | boolean | Si está esperando una pieza para poder continuar |
+| `repuestoPendiente` | string \| null | Nombre del repuesto pendiente, se muestra como alerta en la TV |
+
+## Plan semanal (colección `config`, documento `planSemanal`)
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `avance` | number | % de cumplimiento del plan semanal del taller (0–100) |
+| `actualizadoAt` | number (ms) | Última vez que se guardó desde el celular |
+
+Es un dato independiente de los equipos — no pertenece a ningún documento de `equipos`, se lee y escribe directo desde la pestaña "Plan Semanal" del celular y se muestra en la tercera tarjeta de métricas de la TV.
 
 Tiempo en reparación = `operativoAt - ingresoAt`. Tiempo en standby = `(salidaAt || ahora) - operativoAt`. Tiempo total = `(salidaAt || ahora) - ingresoAt`.

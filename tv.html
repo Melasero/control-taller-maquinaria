@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Torre de Control · Taller</title>
+<title>Taller de Mantenimiento Stracon Punto F</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap">
 <style>
@@ -46,43 +46,100 @@
 
   .topbar{
     display:flex; align-items:center; justify-content:space-between;
-    padding: 24px 44px 18px; border-bottom:1px solid var(--border); flex-shrink:0;
+    padding: 20px 44px 14px; border-bottom:1px solid var(--border); flex-shrink:0;
   }
   .brand-mark{ display:flex; align-items:center; gap:12px; }
   .brand-mark .dot{ width:11px; height:11px; border-radius:50%; background: var(--accent); box-shadow:0 0 0 4px var(--accent-dim); }
   h1{
-    font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:30px;
+    font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:28px;
     text-transform:uppercase; letter-spacing:0.03em; margin:0; line-height:1;
   }
   .sub{ font-size:13px; color: var(--text-dim); letter-spacing:0.07em; text-transform:uppercase; padding-left:23px; margin-top:5px; }
   .clock-block{ text-align:right; }
   .clock{
-    font-family:'Big Shoulders Display', sans-serif; font-weight:700; font-size:62px; line-height:1;
+    font-family:'Big Shoulders Display', sans-serif; font-weight:700; font-size:52px; line-height:1;
     font-variant-numeric: tabular-nums;
   }
   .clock .secs{ color: var(--text-dim); font-size:0.55em; }
-  .date{ font-size:14px; color: var(--text-dim); text-transform:capitalize; margin-top:5px; }
+  .date{ font-size:13px; color: var(--text-dim); text-transform:capitalize; margin-top:5px; }
+
+  /* ---- métricas + controles ---- */
+  .metrics-row{ display:grid; grid-template-columns:1fr 1fr 1.3fr; gap:12px; padding:14px 44px 0; flex-shrink:0; }
+  .metric-card{
+    background: var(--panel-2); border:1px solid var(--border); border-radius:12px; padding:12px 18px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .metric-card .m-ind{ width:11px; height:11px; border-radius:50%; flex-shrink:0; }
+  .metric-card.red .m-ind{ background: var(--red); box-shadow:0 0 0 5px var(--red-dim); }
+  .metric-card.yellow .m-ind{ background: var(--yellow); box-shadow:0 0 0 5px var(--yellow-dim); }
+  .metric-card .m-num{
+    font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:30px; line-height:1;
+    font-variant-numeric: tabular-nums;
+  }
+  .metric-card.red .m-num{ color: var(--red); }
+  .metric-card.yellow .m-num{ color: var(--yellow); }
+  .metric-card .m-label{ font-size:10.5px; color: var(--text-dim); text-transform:uppercase; letter-spacing:0.05em; margin-top:2px; }
+  .metric-card.plan{ flex-direction:column; align-items:stretch; gap:6px; }
+  .metric-card.plan .plan-title{
+    font-family:'Big Shoulders Display', sans-serif; font-weight:700; font-size:13px; text-transform:uppercase;
+    letter-spacing:0.03em; color: var(--text);
+  }
+  .metric-card.plan .plan-top{ display:flex; align-items:baseline; gap:8px; }
+  .metric-card.plan .m-num{ color: var(--accent); font-size:26px; }
+  .metric-card.plan .m-label{ margin-top:0; }
+  .metric-bar{ height:5px; border-radius:999px; background: var(--panel); overflow:hidden; }
+  .metric-bar-fill{ height:100%; border-radius:999px; background: var(--accent); transition: width .4s ease; }
+
+  .topbar-controls{
+    display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+    margin:10px 44px 0; background: var(--panel-2); border:1px solid var(--border); border-radius:12px; padding:9px 16px;
+  }
+  .tc-label{ font-size:11px; color: var(--text-faint); text-transform:uppercase; letter-spacing:0.05em; }
+  .tv-autoscroll{
+    display:inline-flex; align-items:center; gap:8px; font-family:'IBM Plex Mono', monospace; font-size:12px;
+    font-weight:600; letter-spacing:0.02em; color: var(--text-dim); background: var(--panel); border:1px solid var(--border);
+    border-radius:999px; padding:6px 13px 6px 10px; cursor:pointer; transition: all .15s ease;
+  }
+  .tv-autoscroll:hover{ color: var(--text); border-color: var(--text-faint); }
+  .tv-dot{ width:9px; height:9px; border-radius:50%; background: var(--text-faint); flex-shrink:0; transition: background .15s ease; }
+  .tv-autoscroll.on{ border-color: var(--green); color: var(--green); }
+  .tv-autoscroll.on .tv-dot{ background: var(--green); animation: tvDotPulse 1.1s ease-in-out infinite; }
+  @keyframes tvDotPulse{
+    0%,100%{ box-shadow:0 0 0 0 rgba(52,211,153,0.55); }
+    50%{ box-shadow:0 0 0 5px rgba(52,211,153,0); }
+  }
 
   .board{
     flex:1; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1px;
-    background: var(--border); overflow:hidden; min-height:0;
+    background: var(--border); overflow:hidden; min-height:0; margin-top:12px;
   }
   .column{ background: var(--panel); display:flex; flex-direction:column; min-height:0; }
-  .col-head{ display:flex; align-items:center; justify-content:space-between; padding:18px 26px 14px; flex-shrink:0; }
-  .col-head .label{ display:flex; align-items:center; gap:11px; }
+  .col-head{ display:flex; align-items:center; justify-content:space-between; padding:16px 26px 10px; flex-shrink:0; }
+  .col-head .label{ display:flex; align-items:center; gap:11px; min-width:0; }
   .ind{ width:12px; height:12px; border-radius:50%; flex-shrink:0; }
   .ind.red{ background: var(--red); box-shadow:0 0 0 4px var(--red-dim); }
   .ind.yellow{ background: var(--yellow); box-shadow:0 0 0 4px var(--yellow-dim); }
   .ind.green{ background: var(--green); box-shadow:0 0 0 4px var(--green-dim); }
   .col-head h2{
-    font-family:'Big Shoulders Display', sans-serif; font-weight:700; font-size:21px;
-    text-transform:uppercase; letter-spacing:0.02em; margin:0;
+    font-family:'Big Shoulders Display', sans-serif; font-weight:700; font-size:20px;
+    text-transform:uppercase; letter-spacing:0.02em; margin:0; line-height:1.15;
   }
   .count{
     font-family:'IBM Plex Mono', monospace; font-size:13px; font-weight:600; color: var(--text-dim);
     background: var(--panel-2); border:1px solid var(--border); padding:4px 10px; border-radius:999px;
-    font-variant-numeric: tabular-nums;
+    font-variant-numeric: tabular-nums; flex-shrink:0;
   }
+
+  /* ---- filtros por columna ---- */
+  .filter-bar{ padding:0 22px 10px; display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+  .filter-row{ display:flex; gap:6px; flex-wrap:wrap; }
+  select.mini{
+    flex:1; min-width:0; background: var(--panel-2); border:1px solid var(--border); color: var(--text-dim);
+    font-family:'IBM Plex Sans', sans-serif; font-size:12.5px; border-radius:7px; padding:6px 22px 6px 9px; appearance:none;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="%238fa0b3"><path d="M5 7l5 6 5-6z"/></svg>');
+    background-repeat:no-repeat; background-position: right 6px center;
+  }
+  select.mini:focus{ outline:none; border-color: var(--accent); color: var(--text); }
 
   .list{ flex:1; overflow-y:auto; padding:4px 20px 24px; display:flex; flex-direction:column; gap:10px; }
   .list::-webkit-scrollbar{ width:7px; }
@@ -91,12 +148,14 @@
   .empty{ color: var(--text-faint); font-size:13px; padding:18px 8px; text-align:center; border:1px dashed var(--border); border-radius:9px; margin-top:6px; }
 
   .card{
+    position:relative; cursor:pointer;
     background: var(--card); border:1px solid var(--border); border-radius:11px; padding:14px 16px;
-    transition: transform .35s cubic-bezier(.2,.8,.2,1), opacity .35s ease, box-shadow .3s ease, background .3s ease;
+    transition: transform .35s cubic-bezier(.2,.8,.2,1), opacity .35s ease, box-shadow .3s ease, background .3s ease, border-color .15s ease;
   }
   .card.red{ border-left:3px solid var(--red-line); }
   .card.yellow{ border-left:3px solid var(--yellow-line); }
   .card.green{ border-left:3px solid var(--green-line); }
+  .card.critico{ border-left:4px solid #f43f5e; }
   .card.entering{ opacity:0; transform: translateY(-12px) scale(0.98); }
   .card.leaving{ opacity:0 !important; transform: translateX(16px) scale(0.97) !important; }
 
@@ -114,9 +173,48 @@
     color:#2b1e02; background: var(--yellow-bright); padding:3px 8px; border-radius:6px; margin-top:6px;
   }
 
+  .eq-name-row{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
   .eq-name{ font-weight:700; font-size:18px; line-height:1.2; }
+  .critico-badge{
+    font-size:10px; font-weight:800; letter-spacing:0.04em; padding:2px 8px; border-radius:999px;
+    background: rgba(244,63,94,0.22); color:#fda4af; text-transform:uppercase; white-space:nowrap;
+    animation: criticoPulse 1.1s ease-in-out infinite;
+  }
+  @keyframes criticoPulse{
+    0%,100%{ box-shadow:0 0 0 0 rgba(244,63,94,0); }
+    50%{ box-shadow:0 0 10px 2px rgba(244,63,94,0.6); }
+  }
   .eq-meta{ font-size:12px; color: var(--text-dim); text-transform:uppercase; letter-spacing:0.03em; margin-top:5px; }
   .eq-meta .sep{ color: var(--text-faint); margin:0 5px; }
+
+  .badge-row{ display:flex; gap:6px; flex-wrap:wrap; margin-top:7px; }
+  .badge-pill{
+    display:inline-flex; align-items:center; font-size:11px; font-weight:700; letter-spacing:0.03em;
+    padding:3px 10px; border-radius:999px; text-transform:uppercase; line-height:1.4;
+  }
+
+  .parts-alert{
+    display:flex; align-items:center; gap:8px; margin-top:8px; padding:8px 10px; border-radius:8px;
+    background: rgba(242,73,92,0.1); border:1px solid rgba(242,73,92,0.3); font-size:12px; color:#fda4af; line-height:1.4;
+  }
+  .parts-alert .ic{ font-size:14px; flex-shrink:0; }
+
+  .since-line{
+    display:flex; align-items:center; gap:6px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--border);
+  }
+  .since-line .ic{ color: var(--text-faint); font-size:12px; }
+  .since-line .val{
+    font-family:'IBM Plex Mono', monospace; font-size:13px; font-weight:600; color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .avance-row{ margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); }
+  .avance-bar{ margin-top:5px; height:5px; border-radius:999px; background: var(--panel); overflow:hidden; }
+  .avance-bar-fill{ height:100%; border-radius:999px; background: var(--accent); transition: width .3s ease; }
+  .avance-label{
+    display:flex; justify-content:space-between; font-size:10.5px; color: var(--text-dim);
+    text-transform:uppercase; letter-spacing:0.03em; font-variant-numeric: tabular-nums;
+  }
 
   .card-foot{ display:flex; align-items:baseline; justify-content:space-between; margin-top:10px; }
   .timer{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:21px; font-variant-numeric: tabular-nums; }
@@ -128,13 +226,46 @@
   .summary-row{ display:flex; gap:16px; margin-top:8px; }
   .summary-item .val{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:15px; color: var(--text); }
   .summary-item .cap{ font-size:10px; color: var(--text-faint); text-transform:uppercase; letter-spacing:0.05em; }
+
+  /* ---- modal de detalle ---- */
+  .modal-backdrop{
+    position:fixed; inset:0; background: rgba(5,7,10,0.6); backdrop-filter: blur(2px);
+    display:flex; align-items:center; justify-content:center; padding:24px; z-index:50;
+    opacity:0; pointer-events:none; transition: opacity .18s ease;
+  }
+  .modal-backdrop.open{ opacity:1; pointer-events:auto; }
+  .modal{
+    width:100%; max-width:520px; background: var(--panel-2); border:1px solid var(--border); border-radius:14px;
+    padding:28px 28px 24px; box-shadow: 0 30px 70px rgba(0,0,0,0.55);
+    transform: translateY(10px) scale(0.98); transition: transform .18s ease;
+  }
+  .modal-backdrop.open .modal{ transform: translateY(0) scale(1); }
+  .modal-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:4px; }
+  .modal-eq{ font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:28px; line-height:1.1; }
+  .modal-state{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+    padding:4px 11px; border-radius:999px; white-space:nowrap; margin-top:3px;
+  }
+  .modal-state.red{ background: var(--red-dim); color: var(--red); }
+  .modal-state.yellow{ background: var(--yellow-dim); color: var(--yellow); }
+  .modal-state.green{ background: var(--green-dim); color: var(--green); }
+  .modal-meta{ font-size:13px; color: var(--text-dim); text-transform:uppercase; letter-spacing:0.03em; margin-top:8px; }
+  .modal-meta .sep{ color: var(--text-faint); margin:0 5px; }
+  .modal-desc{
+    margin-top:16px; padding:14px 16px; background: var(--panel); border:1px solid var(--border); border-radius:10px;
+    font-size:15px; line-height:1.55; color: var(--text);
+  }
+  .modal-desc .cap{ display:block; font-size:10.5px; color: var(--text-faint); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px; }
+  .modal-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
+  .modal-field .cap{ font-size:10.5px; color: var(--text-faint); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px; }
+  .modal-field .val{ font-family:'IBM Plex Mono', monospace; font-size:14px; color: var(--text); font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
 
 <div class="topbar">
   <div>
-    <div class="brand-mark"><span class="dot"></span><h1>Torre de Control · Taller</h1></div>
+    <div class="brand-mark"><span class="dot"></span><h1>Taller de Mantenimiento Stracon Punto F</h1></div>
     <div class="sub">Estado de maquinaria en mantenimiento</div>
   </div>
   <div class="clock-block">
@@ -143,18 +274,58 @@
   </div>
 </div>
 
+<div class="metrics-row">
+  <div class="metric-card red">
+    <span class="m-ind"></span>
+    <div><div class="m-num" id="metricFalla">0</div><div class="m-label">Equipos en Mantenimiento</div></div>
+  </div>
+  <div class="metric-card yellow">
+    <span class="m-ind"></span>
+    <div><div class="m-num" id="metricStandby">0</div><div class="m-label">Equipos en Standby</div></div>
+  </div>
+  <div class="metric-card plan">
+    <div class="plan-title">Avance del Plan Semanal</div>
+    <div class="plan-top">
+      <div class="m-num" id="metricPlan">0%</div>
+      <div class="m-label">% de cumplimiento</div>
+    </div>
+    <div class="metric-bar"><div class="metric-bar-fill" id="metricPlanBar" style="width:0%;"></div></div>
+  </div>
+</div>
+
+<div class="topbar-controls">
+  <span class="tc-label">Filtros y modo de visualización</span>
+  <button class="tv-autoscroll" id="tvAutoScrollBtn" type="button">
+    <span class="tv-dot"></span>
+    <span id="tvAutoScrollLabel">Auto-Scroll · OFF</span>
+  </button>
+</div>
+
 <div class="board">
   <div class="column">
     <div class="col-head">
       <div class="label"><span class="ind red"></span><h2>En mantenimiento</h2></div>
       <div class="count" id="countFalla">0</div>
     </div>
+    <div class="filter-bar">
+      <div class="filter-row">
+        <select class="mini" id="fFallaEmpresa"><option value="">Empresa: todas</option></select>
+        <select class="mini" id="fFallaUbic"><option value="">Ubicación: todas</option></select>
+      </div>
+      <div class="filter-row"><select class="mini" id="fFallaTipo"><option value="">Tipo de falla: todos</option></select></div>
+    </div>
     <div class="list" id="listFalla"></div>
   </div>
   <div class="column">
     <div class="col-head">
-      <div class="label"><span class="ind yellow"></span><h2>Operativos en standby</h2></div>
+      <div class="label"><span class="ind yellow"></span><h2>Standby / Operativos en Taller</h2></div>
       <div class="count" id="countStandby">0</div>
+    </div>
+    <div class="filter-bar">
+      <div class="filter-row">
+        <select class="mini" id="fStbEmpresa"><option value="">Empresa: todas</option></select>
+        <select class="mini" id="fStbUbic"><option value="">Ubicación: todas</option></select>
+      </div>
     </div>
     <div class="list" id="listStandby"></div>
   </div>
@@ -163,14 +334,33 @@
       <div class="label"><span class="ind green"></span><h2>Últimos entregados</h2></div>
       <div class="count" id="countEntregado">0</div>
     </div>
+    <div class="filter-bar">
+      <div class="filter-row">
+        <select class="mini" id="fEntEmpresa"><option value="">Empresa: todas</option></select>
+        <select class="mini" id="fEntRango">
+          <option value="all" selected>Rango: todos</option>
+          <option value="today">Hoy</option>
+          <option value="7">7 días</option>
+          <option value="30">30 días</option>
+        </select>
+      </div>
+    </div>
     <div class="list" id="listEntregado"></div>
   </div>
 </div>
 
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal" id="modalBox"></div>
+</div>
+
 <script type="module">
 import { db } from "./firebase-init.js";
-import { collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
-import { ESTADOS, STANDBY_ALERT_MS, formatHMS, formatHM, formatTime } from "./shared.js";
+import {
+  collection, doc, onSnapshot, query, orderBy
+} from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+import {
+  ESTADOS, PRIORIDADES, STANDBY_ALERT_MS, PLAN_COLLECTION, PLAN_DOC, formatHMS, formatHM, formatTime, formatDateTime
+} from "./shared.js";
 
 const DIAS = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -192,40 +382,85 @@ const listEntregadoEl = document.getElementById("listEntregado");
 const countFallaEl = document.getElementById("countFalla");
 const countStandbyEl = document.getElementById("countStandby");
 const countEntregadoEl = document.getElementById("countEntregado");
+const metricFallaEl = document.getElementById("metricFalla");
+const metricStandbyEl = document.getElementById("metricStandby");
 
 const nodeMap = {};
 let fleet = [];
 
+// ---------- helpers de color / badges ----------
+const TIPO_FALLA_COLOR = {
+  "Mecánica": { bg:"rgba(148,163,184,0.2)", fg:"#cbd5e1" },
+  "Eléctrica": { bg:"rgba(250,204,21,0.18)", fg:"#fde047" },
+  "Hidráulica": { bg:"rgba(56,189,248,0.18)", fg:"#7dd3fc" },
+  "Soldadura": { bg:"rgba(251,146,60,0.2)", fg:"#fdba74" },
+  "Llantería": { bg:"rgba(180,140,100,0.24)", fg:"#e0bd97" },
+  "Mantenimiento Preventivo": { bg:"rgba(52,211,153,0.18)", fg:"#6ee7b7" },
+  "Otro": { bg:"rgba(148,163,184,0.14)", fg:"#94a3b8" }
+};
+function tipoFallaBadge(tipo){
+  if(!tipo) return "";
+  const c = TIPO_FALLA_COLOR[tipo] || TIPO_FALLA_COLOR["Otro"];
+  return `<span class="badge-pill" style="background:${c.bg};color:${c.fg};">${tipo}</span>`;
+}
+function isCritico(v){ return v.prioridad === PRIORIDADES.CRITICO; }
+function eqNameRow(v){
+  const badge = isCritico(v) ? `<span class="critico-badge">Crítico</span>` : "";
+  return `<div class="eq-name-row"><div class="eq-name">${v.equipo}</div>${badge}</div>`;
+}
+function avanceRow(v){
+  if(v.avance == null) return "";
+  const pct = Math.max(0, Math.min(100, v.avance));
+  return `
+    <div class="avance-row">
+      <div class="avance-label"><span>Avance de la reparación</span><span>${pct}%</span></div>
+      <div class="avance-bar"><div class="avance-bar-fill" style="width:${pct}%;"></div></div>
+    </div>
+  `;
+}
+function partsAlert(v){
+  if(!v.bloqueadoPorRepuesto) return "";
+  return `<div class="parts-alert"><span class="ic">&#128721;</span><span>Bloqueado por repuesto: <b>${v.repuestoPendiente || "sin especificar"}</b></span></div>`;
+}
+
 function buildFallaCard(v){
   const card = document.createElement("div");
-  card.className = "card red";
+  card.className = "card red" + (isCritico(v) ? " critico" : "");
   card.dataset.id = v.id;
   const horometroTxt = v.horometro != null ? `<span class="sep">&middot;</span>${v.horometro} h` : "";
   const fallaDescTxt = v.descripcionFalla ? `<div class="eq-meta" style="margin-top:4px; text-transform:none; letter-spacing:0; color: var(--text-faint);">${v.descripcionFalla}</div>` : "";
   card.innerHTML = `
-    <div class="eq-name">${v.equipo}</div>
-    <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}<span class="sep">&middot;</span>${v.tipoFalla}${horometroTxt}</div>
+    ${eqNameRow(v)}
+    <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}${horometroTxt}</div>
+    <div class="badge-row">${tipoFallaBadge(v.tipoFalla)}</div>
     ${fallaDescTxt}
+    ${partsAlert(v)}
+    <div class="since-line"><span class="ic">&#9679;</span><span class="val">Ingresó ${formatDateTime(v.ingresoAt)}</span></div>
     <div class="card-foot">
       <div><div class="timer" data-role="timer"></div><div class="timer-cap">tiempo en reparación</div></div>
     </div>
+    ${avanceRow(v)}
   `;
+  card.addEventListener("click", () => openModal(v, "red", "En mantenimiento"));
   return card;
 }
 
 function buildStandbyCard(v){
   const card = document.createElement("div");
-  card.className = "card yellow";
+  card.className = "card yellow" + (isCritico(v) ? " critico" : "");
   card.dataset.id = v.id;
-  const horometroTxt = v.horometro != null ? `<span class="sep">&middot;</span>${v.horometro} h` : "";
   card.innerHTML = `
-    <div class="eq-name">${v.equipo}</div>
-    <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}${horometroTxt}</div>
+    ${eqNameRow(v)}
+    <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}</div>
+    ${v.tipoFalla ? `<div class="badge-row">${tipoFallaBadge(v.tipoFalla)}</div>` : ""}
+    <div class="since-line"><span class="ic">&#9679;</span><span class="val">Ingresó ${formatDateTime(v.ingresoAt)}</span></div>
+    <div class="since-line" style="margin-top:4px; padding-top:0; border-top:none;"><span class="ic">&#9679;</span><span class="val">Operativo desde ${formatDateTime(v.operativoAt)}</span></div>
     <div class="card-foot">
       <div><div class="timer" data-role="timer"></div><div class="timer-cap">tiempo en standby</div></div>
     </div>
     <div class="alert-badge" data-role="alert" hidden>Sin recoger +2h</div>
   `;
+  card.addEventListener("click", () => openModal(v, "yellow", "Standby"));
   return card;
 }
 
@@ -237,14 +472,48 @@ function buildEntregadoCard(v){
   const stb = v.salidaAt && v.operativoAt ? v.salidaAt - v.operativoAt : 0;
   card.innerHTML = `
     <div class="eq-name">${v.equipo}</div>
-    <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}<span class="sep">&middot;</span>salió ${formatTime(v.salidaAt)}</div>
+    <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>salió ${formatTime(v.salidaAt)}</div>
     <div class="summary-row">
       <div class="summary-item"><div class="val">${formatHM(rep)}</div><div class="cap">reparación</div></div>
       <div class="summary-item"><div class="val">${formatHM(stb)}</div><div class="cap">standby</div></div>
     </div>
   `;
+  card.addEventListener("click", () => openModal(v, "green", "Entregado"));
   return card;
 }
+
+// ---------- modal de detalle ----------
+const modalBackdrop = document.getElementById("modalBackdrop");
+const modalBox = document.getElementById("modalBox");
+function openModal(v, color, stateLabel){
+  const horometroTxt = v.horometro != null ? `${v.horometro} h` : "—";
+  const descHtml = v.descripcionFalla
+    ? `<div class="modal-desc"><span class="cap">Detalle de la falla</span>${v.descripcionFalla}</div>`
+    : "";
+  const repuestoHtml = v.bloqueadoPorRepuesto
+    ? `<div class="parts-alert" style="margin-top:14px;"><span class="ic">&#128721;</span><span>Bloqueado por repuesto: <b>${v.repuestoPendiente || "sin especificar"}</b></span></div>`
+    : "";
+  modalBox.innerHTML = `
+    <div class="modal-head">
+      <div><div class="modal-eq">${v.equipo}</div></div>
+      <span class="modal-state ${color}">${stateLabel}</span>
+    </div>
+    <div class="modal-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}${v.tipoFalla ? `<span class="sep">&middot;</span>${v.tipoFalla}` : ""}</div>
+    ${descHtml}
+    ${repuestoHtml}
+    <div class="modal-grid">
+      <div class="modal-field"><span class="cap">Ingresó a taller</span><div class="val">${formatDateTime(v.ingresoAt)}</div></div>
+      <div class="modal-field"><span class="cap">Horómetro</span><div class="val">${horometroTxt}</div></div>
+      ${v.operativoAt ? `<div class="modal-field"><span class="cap">Pasó a operativo</span><div class="val">${formatDateTime(v.operativoAt)}</div></div>` : ""}
+      ${v.salidaAt ? `<div class="modal-field"><span class="cap">Entregado</span><div class="val">${formatDateTime(v.salidaAt)}</div></div>` : ""}
+      ${v.avance != null ? `<div class="modal-field"><span class="cap">Avance de reparación</span><div class="val">${v.avance}%</div></div>` : ""}
+    </div>
+  `;
+  modalBackdrop.classList.add("open");
+}
+function closeModal(){ modalBackdrop.classList.remove("open"); }
+modalBackdrop.addEventListener("click", (e) => { if(e.target === modalBackdrop) closeModal(); });
+document.addEventListener("keydown", (e) => { if(e.key === "Escape") closeModal(); });
 
 function renderList(container, items, builder, emptyText){
   const existingIds = Object.keys(nodeMap).filter(id => nodeMap[id].parentNode === container);
@@ -291,18 +560,86 @@ function renderList(container, items, builder, emptyText){
   }));
 }
 
+// ---------- filtros por columna ----------
+function uniqueSorted(arr){ return [...new Set(arr.filter(Boolean))].sort(); }
+function populateSelect(sel, values, placeholder){
+  const prev = sel.value;
+  sel.innerHTML = `<option value="">${placeholder}</option>` + values.map(v => `<option value="${v}">${v}</option>`).join("");
+  if(values.includes(prev)) sel.value = prev;
+}
+
+// La jornada empieza a las 06:00 (arranque del turno día) y corre 24h hasta las 06:00
+// del día siguiente. Antes de las 06:00 todavía se está dentro de la jornada de ayer,
+// así el turno noche nunca queda partido a la mitad por el filtro de rango.
+function jornadaStart(ms){
+  const d = new Date(ms);
+  if(d.getHours() < 6) d.setDate(d.getDate() - 1);
+  d.setHours(6, 0, 0, 0);
+  return d.getTime();
+}
+function passesRange(ms, range){
+  if(range === "all") return true;
+  const now = Date.now();
+  if(range === "today") return ms >= jornadaStart(now);
+  const dias = Number(range);
+  return ms >= jornadaStart(now) - (dias - 1) * 86400000;
+}
+
+const fFallaEmpresaSel = document.getElementById("fFallaEmpresa");
+const fFallaUbicSel = document.getElementById("fFallaUbic");
+const fFallaTipoSel = document.getElementById("fFallaTipo");
+const fStbEmpresaSel = document.getElementById("fStbEmpresa");
+const fStbUbicSel = document.getElementById("fStbUbic");
+const fEntEmpresaSel = document.getElementById("fEntEmpresa");
+const fEntRangoSel = document.getElementById("fEntRango");
+[fFallaEmpresaSel, fFallaUbicSel, fFallaTipoSel, fStbEmpresaSel, fStbUbicSel, fEntEmpresaSel, fEntRangoSel].forEach(sel => {
+  sel.addEventListener("change", render);
+});
+
 function render(){
-  const enFalla = fleet.filter(v => v.estado === ESTADOS.REPARACION).sort((a,b) => a.ingresoAt - b.ingresoAt);
-  const enStandby = fleet.filter(v => v.estado === ESTADOS.STANDBY).sort((a,b) => a.operativoAt - b.operativoAt);
-  const entregados = fleet.filter(v => v.estado === ESTADOS.ENTREGADO).sort((a,b) => b.salidaAt - a.salidaAt).slice(0, 10);
+  // Los registros "reingreso" (equipos que volvieron a mantenimiento por una
+  // nueva avería) quedan cerrados: no aparecen en ninguna columna de la TV,
+  // solo sirven de historial para el reporte.
+  const active = fleet.filter(v => v.estado !== ESTADOS.REINGRESO);
+
+  const enFallaAll = active.filter(v => v.estado === ESTADOS.REPARACION);
+  const enStandbyAll = active.filter(v => v.estado === ESTADOS.STANDBY);
+  const entregadosAll = active.filter(v => v.estado === ESTADOS.ENTREGADO);
+
+  populateSelect(fFallaEmpresaSel, uniqueSorted(enFallaAll.map(v => v.empresa)), "Empresa: todas");
+  populateSelect(fFallaUbicSel, uniqueSorted(enFallaAll.map(v => v.ubicacion)), "Ubicación: todas");
+  populateSelect(fFallaTipoSel, uniqueSorted(enFallaAll.map(v => v.tipoFalla)), "Tipo de falla: todos");
+  populateSelect(fStbEmpresaSel, uniqueSorted(enStandbyAll.map(v => v.empresa)), "Empresa: todas");
+  populateSelect(fStbUbicSel, uniqueSorted(enStandbyAll.map(v => v.ubicacion)), "Ubicación: todas");
+  populateSelect(fEntEmpresaSel, uniqueSorted(entregadosAll.map(v => v.empresa)), "Empresa: todas");
+
+  // Mantenimiento y Standby son trabajo activo: siempre se muestran completos
+  // (solo filtrados por empresa/ubicación/tipo), sin importar ningún rango de fecha.
+  const enFalla = enFallaAll
+    .filter(v => !fFallaEmpresaSel.value || v.empresa === fFallaEmpresaSel.value)
+    .filter(v => !fFallaUbicSel.value || v.ubicacion === fFallaUbicSel.value)
+    .filter(v => !fFallaTipoSel.value || v.tipoFalla === fFallaTipoSel.value)
+    .sort((a,b) => a.ingresoAt - b.ingresoAt);
+
+  const enStandby = enStandbyAll
+    .filter(v => !fStbEmpresaSel.value || v.empresa === fStbEmpresaSel.value)
+    .filter(v => !fStbUbicSel.value || v.ubicacion === fStbUbicSel.value)
+    .sort((a,b) => a.operativoAt - b.operativoAt);
+
+  const entregados = entregadosAll
+    .filter(v => !fEntEmpresaSel.value || v.empresa === fEntEmpresaSel.value)
+    .filter(v => passesRange(v.salidaAt, fEntRangoSel.value))
+    .sort((a,b) => b.salidaAt - a.salidaAt);
 
   countFallaEl.textContent = enFalla.length;
   countStandbyEl.textContent = enStandby.length;
   countEntregadoEl.textContent = entregados.length;
+  metricFallaEl.textContent = enFalla.length;
+  metricStandbyEl.textContent = enStandby.length;
 
   renderList(listFallaEl, enFalla, buildFallaCard, "Sin equipos en mantenimiento.");
   renderList(listStandbyEl, enStandby, buildStandbyCard, "Sin equipos en standby.");
-  renderList(listEntregadoEl, entregados, buildEntregadoCard, "Aún no hay entregas registradas.");
+  renderList(listEntregadoEl, entregados, buildEntregadoCard, "Sin entregas en este rango.");
 
   tickTimers();
 }
@@ -328,6 +665,51 @@ function tickTimers(){
 
 setInterval(tickTimers, 1000);
 
+// ---------- Modo TV · Auto-Scroll ----------
+// El body es de altura fija (100vh, sin scroll de página) a propósito, para que
+// la torre de control se vea completa de un vistazo. Lo único que realmente
+// se puede desplazar son las 3 listas de tarjetas, así que el botón global
+// las desplaza en conjunto y cada una reinicia por su cuenta al llegar al final.
+const tvAutoScrollBtn = document.getElementById("tvAutoScrollBtn");
+const tvAutoScrollLabel = document.getElementById("tvAutoScrollLabel");
+let tvAutoScrollOn = false;
+let tvAutoScrollTimer = null;
+
+function tvAutoScrollTick(){
+  [listFallaEl, listStandbyEl, listEntregadoEl].forEach(listEl => {
+    const atBottom = listEl.scrollTop + listEl.clientHeight >= listEl.scrollHeight - 2;
+    if(atBottom){
+      listEl.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      listEl.scrollTop += 1;
+    }
+  });
+}
+function setTvAutoScroll(on){
+  tvAutoScrollOn = on;
+  tvAutoScrollBtn.classList.toggle("on", on);
+  tvAutoScrollLabel.textContent = on ? "Auto-Scroll · ON" : "Auto-Scroll · OFF";
+  clearInterval(tvAutoScrollTimer);
+  if(on) tvAutoScrollTimer = setInterval(tvAutoScrollTick, 30);
+}
+tvAutoScrollBtn.addEventListener("click", () => setTvAutoScroll(!tvAutoScrollOn));
+[listFallaEl, listStandbyEl, listEntregadoEl].forEach(listEl => {
+  ["wheel", "touchstart"].forEach(evt => {
+    listEl.addEventListener(evt, () => { if(tvAutoScrollOn) setTvAutoScroll(false); }, { passive:true });
+  });
+});
+
+// ---------- avance del plan semanal (independiente, se llena a mano desde el celular) ----------
+const metricPlanEl = document.getElementById("metricPlan");
+const metricPlanBarEl = document.getElementById("metricPlanBar");
+onSnapshot(doc(db, PLAN_COLLECTION, PLAN_DOC), (snap) => {
+  const data = snap.data();
+  const pct = data && typeof data.avance === "number" ? Math.max(0, Math.min(100, data.avance)) : 0;
+  metricPlanEl.textContent = pct + "%";
+  metricPlanBarEl.style.width = pct + "%";
+}, (err) => console.error(err));
+
+// ---------- suscripción en tiempo real ----------
 const q = query(collection(db, "equipos"), orderBy("ingresoAt", "desc"));
 onSnapshot(q, (snap) => {
   fleet = snap.docs.map(d => ({ id: d.id, ...d.data() }));

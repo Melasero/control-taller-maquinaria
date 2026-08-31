@@ -3,14 +3,35 @@ export const COLLECTION = "equipos";
 export const ESTADOS = {
   REPARACION: "reparacion",
   STANDBY: "standby",
-  ENTREGADO: "entregado"
+  ENTREGADO: "entregado",
+  // Cierra un registro cuando el equipo vuelve a mantenimiento por una nueva
+  // avería (ver "Volver a mantenimiento" en celular.html). Nunca aparece en
+  // las columnas de la TV, pero queda en Firestore para el reporte.
+  REINGRESO: "reingreso"
 };
+
+export const PRIORIDADES = {
+  CRITICO: "Crítico"
+};
+
+// Documento único (fuera de la colección "equipos") con el avance del plan
+// semanal del taller. Se llena a mano desde la pestaña "Plan Semanal" del
+// celular y es independiente del estado de cualquier equipo.
+export const PLAN_COLLECTION = "config";
+export const PLAN_DOC = "planSemanal";
 
 export const STANDBY_ALERT_MS = 2 * 60 * 60 * 1000; // 2 horas
 
-export const TIPOS_FALLA = ["Mecánica", "Eléctrica", "Hidráulica", "Mantenimiento Preventivo", "Otro"];
+export const TIPOS_FALLA = ["Mecánica", "Eléctrica", "Hidráulica", "Soldadura", "Llantería", "Mantenimiento Preventivo", "Otro"];
 
 export const UBICACIONES_SUGERIDAS = ["Taller F", "Campo", "Punto G"];
+
+export const EMPRESAS_SUGERIDAS = [
+  { valor: "MD", etiqueta: "Mannucci Diesel" },
+  { valor: "ST", etiqueta: "Stracon Perú" },
+  { valor: "OR", etiqueta: "Maquinarias OR" },
+  { valor: "Komatsu", etiqueta: "Komatsu" }
+];
 
 function pad2(n) {
   return String(n).padStart(2, "0");

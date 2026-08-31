@@ -52,11 +52,11 @@
   .status .dot{ width:8px; height:8px; border-radius:50%; background: var(--green); flex-shrink:0; }
   .status.off .dot{ background: var(--red); }
 
-  .tabs{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:16px; }
+  .tabs{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:16px; }
   .tab{
-    padding:13px; text-align:center;
+    padding:13px 6px; text-align:center;
     background: var(--card); border:1px solid var(--border); border-radius:10px;
-    font-weight:700; font-size:13px; letter-spacing:0.03em; text-transform:uppercase;
+    font-weight:700; font-size:12px; letter-spacing:0.02em; text-transform:uppercase;
     color: var(--text-dim); cursor:pointer;
   }
   .tab.active{ background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
@@ -83,6 +83,14 @@
   }
   input:focus, select:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim); }
 
+  .field.checkbox-field{ display:flex; align-items:center; gap:10px; }
+  .field.checkbox-field input[type=checkbox]{
+    width:20px; height:20px; flex-shrink:0; accent-color:#f43f5e;
+  }
+  .field.checkbox-field label{
+    margin:0; text-transform:none; letter-spacing:0; font-size:15px; font-weight:500; color: var(--text);
+  }
+
   .btn{
     width:100%; padding:16px; border:none; border-radius:10px; font-weight:700; font-size:15px;
     letter-spacing:0.03em; text-transform:uppercase; cursor:pointer;
@@ -106,6 +114,11 @@
   .eq-card.st-standby{ border-left-color: var(--yellow); }
   .eq-card.selected{ background: var(--card-2); border-color: var(--accent); }
   .eq-name{ font-weight:700; font-size:17px; }
+  .critico-chip{
+    display:inline-block; margin-left:8px; font-size:10px; font-weight:800; letter-spacing:0.04em;
+    padding:2px 8px; border-radius:999px; background: rgba(244,63,94,0.22); color:#fda4af;
+    text-transform:uppercase; vertical-align:middle;
+  }
   .eq-meta{ font-size:12.5px; color: var(--text-dim); text-transform:uppercase; letter-spacing:0.03em; margin-top:4px; }
   .eq-meta .sep{ color: var(--text-faint); margin:0 4px; }
   .eq-foot{ display:flex; align-items:center; justify-content:space-between; margin-top:8px; }
@@ -115,12 +128,14 @@
   }
   .chip.reparacion{ background: var(--red-dim); color: var(--red); }
   .chip.standby{ background: var(--yellow-dim); color: var(--yellow); }
-  .eq-time{ font-family:'IBM Plex Mono', monospace; font-size:13px; color: var(--text-dim); }
+  .eq-datetime{ font-family:'IBM Plex Mono', monospace; font-size:12.5px; color: var(--text-dim); text-align:right; }
+  .eq-datetime .elapsed{ display:block; font-size:11px; color: var(--text-faint); margin-top:2px; }
 
   .actionbar{
     position:fixed; left:0; right:0; bottom:0; z-index:20;
     background: var(--panel); border-top:1px solid var(--border);
     padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
+    max-height: 82vh; overflow-y:auto;
     transform: translateY(100%); transition: transform .2s ease;
   }
   .actionbar.open{ transform: translateY(0); }
@@ -135,6 +150,14 @@
   .btn.confirm{ background: var(--green); color:#04241a; }
   .btn.confirm.red{ background: var(--red); color:#2b0407; }
   .btn.cancel{ background: transparent; border:1px solid var(--border); color: var(--text-dim); }
+
+  .edit-link{
+    display:block; width:100%; text-align:center; margin-top:10px; background:none; border:none;
+    color: var(--text-dim); font-size:13px; text-decoration:underline; cursor:pointer; padding:6px;
+  }
+  .edit-form{ max-height:52vh; overflow-y:auto; padding-right:2px; }
+  .edit-form .field{ margin-bottom:12px; }
+  .edit-form .field label{ margin-bottom:6px; font-size:11px; }
 
   .toast{
     position:fixed; top:16px; left:50%; transform:translateX(-50%) translateY(-20px);
@@ -155,8 +178,9 @@
     <div class="status" id="status"><span class="dot"></span><span id="statusText">conectando…</span></div>
   </div>
   <div class="tabs">
-    <div class="tab active" data-tab="ingreso">Nuevo ingreso</div>
-    <div class="tab" data-tab="actualizar">Actualizar estado</div>
+    <div class="tab active" data-tab="ingreso">Ingreso</div>
+    <div class="tab" data-tab="actualizar">Estado</div>
+    <div class="tab" data-tab="plan">Plan Semanal</div>
   </div>
 </header>
 
@@ -168,7 +192,8 @@
     </div>
     <div class="field">
       <label for="fEmpresa">Empresa</label>
-      <input type="text" id="fEmpresa" placeholder="Ej. Transportes del Sur SAC" autocomplete="off">
+      <input type="text" id="fEmpresa" list="empresas" placeholder="Ej. MD, ST, OR, Komatsu…" autocomplete="off">
+      <datalist id="empresas"></datalist>
     </div>
     <div class="field">
       <label for="fUbicacion">Ubicación</label>
@@ -187,6 +212,10 @@
       <label for="fHorometro">Horómetro (h)</label>
       <input type="number" id="fHorometro" placeholder="Ej. 12450" min="0" step="1" inputmode="numeric">
     </div>
+    <div class="field checkbox-field">
+      <input type="checkbox" id="fCritico">
+      <label for="fCritico">Marcar equipo como crítico</label>
+    </div>
     <div class="field">
       <label for="fIngresoAt">Fecha y hora de ingreso</label>
       <input type="datetime-local" id="fIngresoAt">
@@ -203,6 +232,18 @@
     </div>
     <div class="eq-list" id="eqList"></div>
     <div class="empty" id="eqEmpty" hidden>No hay equipos en taller.</div>
+  </section>
+
+  <section id="tab-plan">
+    <div class="field">
+      <div class="hint">Este dato es independiente de los equipos — es el % de avance del plan de trabajo semanal del taller, y solo se actualiza a mano desde aquí.</div>
+    </div>
+    <div class="field">
+      <label for="fPlanValor">Avance del plan semanal (%)</label>
+      <input type="number" id="fPlanValor" min="0" max="100" step="1" value="0">
+    </div>
+    <button class="btn primary" id="btnPlan">Guardar avance</button>
+    <div class="hint" id="planUltima" style="margin-top:14px; text-align:center;"></div>
   </section>
 </main>
 
@@ -222,10 +263,11 @@
 <script type="module">
 import { db } from "./firebase-init.js";
 import {
-  collection, addDoc, doc, updateDoc, onSnapshot, query, orderBy
+  collection, addDoc, doc, updateDoc, setDoc, onSnapshot, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import {
-  COLLECTION, ESTADOS, TIPOS_FALLA, UBICACIONES_SUGERIDAS, formatHMS, formatTime,
+  COLLECTION, ESTADOS, PRIORIDADES, PLAN_COLLECTION, PLAN_DOC,
+  TIPOS_FALLA, UBICACIONES_SUGERIDAS, EMPRESAS_SUGERIDAS, formatHMS, formatDateTime,
   toDatetimeLocal, fromDatetimeLocal
 } from "./shared.js";
 
@@ -238,6 +280,7 @@ document.querySelectorAll(".tab").forEach(tab => {
     document.querySelectorAll("main > section").forEach(s => s.classList.remove("active"));
     tab.classList.add("active");
     document.getElementById("tab-" + tab.dataset.tab).classList.add("active");
+    closeActionbar();
   });
 });
 
@@ -252,6 +295,13 @@ UBICACIONES_SUGERIDAS.forEach(u => {
   const opt = document.createElement("option");
   opt.value = u;
   ubicDatalist.appendChild(opt);
+});
+const empresaDatalist = document.getElementById("empresas");
+EMPRESAS_SUGERIDAS.forEach(e => {
+  const opt = document.createElement("option");
+  opt.value = e.valor;
+  opt.label = e.etiqueta;
+  empresaDatalist.appendChild(opt);
 });
 
 const ingresoAtInput = document.getElementById("fIngresoAt");
@@ -278,6 +328,7 @@ document.getElementById("btnIngreso").addEventListener("click", async () => {
   const descripcionFalla = document.getElementById("fFallaDesc").value.trim();
   const horometroRaw = document.getElementById("fHorometro").value.trim();
   const horometro = horometroRaw === "" ? null : Number(horometroRaw);
+  const critico = document.getElementById("fCritico").checked;
   const ingresoAt = fromDatetimeLocal(ingresoAtInput.value) ?? Date.now();
 
   if (!equipo || !empresa || !ubicacion) {
@@ -293,13 +344,18 @@ document.getElementById("btnIngreso").addEventListener("click", async () => {
       estado: ESTADOS.REPARACION,
       ingresoAt,
       operativoAt: null,
-      salidaAt: null
+      salidaAt: null,
+      prioridad: critico ? PRIORIDADES.CRITICO : null,
+      avance: null,
+      bloqueadoPorRepuesto: false,
+      repuestoPendiente: null
     });
     document.getElementById("fEquipo").value = "";
     document.getElementById("fEmpresa").value = "";
     document.getElementById("fUbicacion").value = "";
     document.getElementById("fFallaDesc").value = "";
     document.getElementById("fHorometro").value = "";
+    document.getElementById("fCritico").checked = false;
     fallaSelect.selectedIndex = 0;
     resetIngresoAtInput();
     showToast(`${equipo} ingresado a taller`);
@@ -307,6 +363,31 @@ document.getElementById("btnIngreso").addEventListener("click", async () => {
     showToast("Error al guardar: " + e.message, "var(--red)");
   } finally {
     btn.disabled = false;
+  }
+});
+
+// ---------- plan semanal (independiente de los equipos) ----------
+const planRef = doc(db, PLAN_COLLECTION, PLAN_DOC);
+const fPlanValor = document.getElementById("fPlanValor");
+const planUltimaEl = document.getElementById("planUltima");
+onSnapshot(planRef, (snap) => {
+  const data = snap.data();
+  if (data && typeof data.avance === "number") {
+    fPlanValor.value = data.avance;
+  }
+  if (data && data.actualizadoAt) {
+    planUltimaEl.textContent = `Última actualización: ${formatDateTime(data.actualizadoAt)}`;
+  }
+}, (err) => console.error(err));
+
+document.getElementById("btnPlan").addEventListener("click", async () => {
+  const raw = fPlanValor.value;
+  const avance = Math.max(0, Math.min(100, Number(raw) || 0));
+  try {
+    await setDoc(planRef, { avance, actualizadoAt: Date.now() }, { merge: true });
+    showToast(`Avance del plan semanal guardado: ${avance}%`);
+  } catch (e) {
+    showToast("Error al guardar: " + e.message, "var(--red)");
   }
 });
 
@@ -347,15 +428,21 @@ function renderList() {
     const card = document.createElement("div");
     card.className = "eq-card st-" + v.estado + (v.id === selectedId ? " selected" : "");
     const since = v.estado === ESTADOS.REPARACION ? v.ingresoAt : v.operativoAt;
+    const sinceLabel = v.estado === ESTADOS.REPARACION ? "Ingresó" : "Operativo";
     const horometroTxt = v.horometro != null ? `<span class="sep">&middot;</span>${v.horometro} h` : "";
     const fallaDescTxt = v.descripcionFalla ? `<div class="eq-meta" style="margin-top:2px; text-transform:none; letter-spacing:0;">${v.descripcionFalla}</div>` : "";
+    const criticoChip = v.prioridad === PRIORIDADES.CRITICO ? `<span class="critico-chip">Crítico</span>` : "";
+    const ingresoLineHtml = v.estado === ESTADOS.STANDBY
+      ? `<div class="eq-meta" style="margin-top:6px;">Ingresó ${formatDateTime(v.ingresoAt)}</div>`
+      : "";
     card.innerHTML = `
-      <div class="eq-name">${v.equipo}</div>
-      <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}<span class="sep">&middot;</span>${v.tipoFalla}${horometroTxt}</div>
+      <div class="eq-name">${v.equipo}${criticoChip}</div>
+      <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}${v.estado === ESTADOS.REPARACION ? `<span class="sep">&middot;</span>${v.tipoFalla}` : ""}${horometroTxt}</div>
       ${fallaDescTxt}
+      ${ingresoLineHtml}
       <div class="eq-foot">
         <span class="chip ${v.estado}">${v.estado === ESTADOS.REPARACION ? "En reparación" : "Standby"}</span>
-        <span class="eq-time" data-since="${since}">${formatHMS(Date.now() - since)}</span>
+        <div class="eq-datetime">${sinceLabel} ${formatDateTime(since)}<span class="elapsed" data-since="${since}">${formatHMS(Date.now() - since)}</span></div>
       </div>
     `;
     card.addEventListener("click", () => selectEquipo(v.id));
@@ -375,45 +462,269 @@ function selectEquipo(id) {
 
 function renderAction(v) {
   if (v.estado === ESTADOS.REPARACION) {
-    abAction.innerHTML = `<button class="btn standby" id="abBtn">Listo / Operativo</button>`;
-    document.getElementById("abBtn").addEventListener("click", () => confirmStep(v, "standby"));
+    abAction.innerHTML = `
+      <div class="field">
+        <label for="fFechaOperativo">Fecha y hora · Listo / Operativo</label>
+        <input type="datetime-local" id="fFechaOperativo" value="${toDatetimeLocal(Date.now())}">
+        <div class="hint">Se llena sola con la hora actual — cámbiala solo si olvidaste registrarlo al momento.</div>
+      </div>
+      <div class="field">
+        <label for="fUbicacionStandby">Ubicación</label>
+        <input type="text" id="fUbicacionStandby" list="ubicaciones" value="${v.ubicacion}">
+        <div class="hint">Prellenada con la ubicación actual — cámbiala si el equipo se movió al pasar a standby.</div>
+      </div>
+      <button class="btn standby" id="abBtn">Listo / Operativo</button>
+      <button class="edit-link" id="abAvance">Actualizar % de avance — relevo de turno</button>
+      <button class="edit-link" id="abRepuesto" style="color:${v.bloqueadoPorRepuesto ? "var(--red)" : "var(--text-dim)"};">${v.bloqueadoPorRepuesto ? "🛑 Editar bloqueo por repuesto" : "Marcar bloqueado por repuesto"}</button>
+      <button class="edit-link" id="abEdit">Editar datos del equipo</button>
+    `;
+    document.getElementById("abBtn").addEventListener("click", async () => {
+      const val = document.getElementById("fFechaOperativo").value;
+      const nuevaUbic = document.getElementById("fUbicacionStandby").value.trim();
+      const operativoAt = fromDatetimeLocal(val) ?? Date.now();
+      try {
+        await updateDoc(doc(db, COLLECTION, v.id), {
+          estado: ESTADOS.STANDBY,
+          operativoAt,
+          ubicacion: nuevaUbic || v.ubicacion
+        });
+        showToast(`${v.equipo} pasó a Standby`);
+        closeActionbar();
+      } catch (e) {
+        showToast("Error al actualizar: " + e.message, "var(--red)");
+      }
+    });
+    document.getElementById("abAvance").addEventListener("click", () => renderAvanceForm(v));
+    document.getElementById("abRepuesto").addEventListener("click", () => renderRepuestoForm(v));
   } else if (v.estado === ESTADOS.STANDBY) {
-    abAction.innerHTML = `<button class="btn entregar" id="abBtn">Entregado a operador</button>`;
-    document.getElementById("abBtn").addEventListener("click", () => confirmStep(v, "entregado"));
+    abAction.innerHTML = `
+      <div class="field">
+        <label for="fFechaEntrega">Fecha y hora · Entregado a operador</label>
+        <input type="datetime-local" id="fFechaEntrega" value="${toDatetimeLocal(Date.now())}">
+        <div class="hint">Se llena sola con la hora actual — cámbiala solo si olvidaste registrarlo al momento.</div>
+      </div>
+      <button class="btn entregar" id="abBtn">Entregado a operador</button>
+      <button class="edit-link" id="abVolver">Volver a mantenimiento — se presentó otra avería</button>
+      <button class="edit-link" id="abEdit">Editar datos del equipo</button>
+    `;
+    document.getElementById("abBtn").addEventListener("click", async () => {
+      const val = document.getElementById("fFechaEntrega").value;
+      const salidaAt = fromDatetimeLocal(val) ?? Date.now();
+      try {
+        await updateDoc(doc(db, COLLECTION, v.id), { estado: ESTADOS.ENTREGADO, salidaAt });
+        showToast(`${v.equipo} entregado al operador`);
+        closeActionbar();
+      } catch (e) {
+        showToast("Error al actualizar: " + e.message, "var(--red)");
+      }
+    });
+    document.getElementById("abVolver").addEventListener("click", () => renderReingresoForm(v));
+  }
+  document.getElementById("abEdit").addEventListener("click", () => renderEditForm(v));
+}
+
+function renderAvanceForm(v) {
+  abAction.innerHTML = `
+    <div class="field">
+      <label for="fAvanceValor">% de avance de la reparación</label>
+      <input type="number" id="fAvanceValor" min="0" max="100" step="5" value="${v.avance != null ? v.avance : 0}">
+      <div class="hint">Déjalo anotado al relevar el siguiente turno, para que sepan por dónde va el trabajo.</div>
+    </div>
+    <div class="confirm-row">
+      <button class="btn cancel" id="fAvanceCancel">Cancelar</button>
+      <button class="btn confirm" id="fAvanceGuardar">Guardar avance</button>
+    </div>
+  `;
+  document.getElementById("fAvanceCancel").addEventListener("click", () => renderAction(v));
+  document.getElementById("fAvanceGuardar").addEventListener("click", async () => {
+    const raw = document.getElementById("fAvanceValor").value;
+    const avance = Math.max(0, Math.min(100, Number(raw) || 0));
+    try {
+      await updateDoc(doc(db, COLLECTION, v.id), { avance });
+      showToast(`${v.equipo} · avance actualizado a ${avance}%`);
+      closeActionbar();
+    } catch (e) {
+      showToast("Error al guardar: " + e.message, "var(--red)");
+    }
+  });
+}
+
+function renderRepuestoForm(v) {
+  const bloqueado = !!v.bloqueadoPorRepuesto;
+  abAction.innerHTML = `
+    <div class="field">
+      <label for="fRepuestoNombre">Repuesto pendiente</label>
+      <input type="text" id="fRepuestoNombre" placeholder="Ej. Sello hidráulico de brazo principal" value="${v.repuestoPendiente || ""}" autocomplete="off">
+      <div class="hint">Se muestra como alerta roja en la tarjeta de la TV mientras el equipo espere esta pieza.</div>
+    </div>
+    <div class="confirm-row">
+      <button class="btn cancel" id="fRepuestoCancel">Cancelar</button>
+      <button class="btn confirm red" id="fRepuestoGuardar">${bloqueado ? "Actualizar" : "Marcar bloqueado"}</button>
+    </div>
+    ${bloqueado ? `<button class="edit-link" id="fRepuestoQuitar">Ya llegó el repuesto — quitar bloqueo</button>` : ""}
+  `;
+  document.getElementById("fRepuestoCancel").addEventListener("click", () => renderAction(v));
+  document.getElementById("fRepuestoGuardar").addEventListener("click", async () => {
+    const nombre = document.getElementById("fRepuestoNombre").value.trim();
+    if (!nombre) {
+      showToast("Escribe el nombre del repuesto pendiente", "var(--red)");
+      return;
+    }
+    try {
+      await updateDoc(doc(db, COLLECTION, v.id), { bloqueadoPorRepuesto: true, repuestoPendiente: nombre });
+      showToast(`${v.equipo} · bloqueado por repuesto: ${nombre}`);
+      closeActionbar();
+    } catch (e) {
+      showToast("Error al guardar: " + e.message, "var(--red)");
+    }
+  });
+  if (bloqueado) {
+    document.getElementById("fRepuestoQuitar").addEventListener("click", async () => {
+      try {
+        await updateDoc(doc(db, COLLECTION, v.id), { bloqueadoPorRepuesto: false, repuestoPendiente: null });
+        showToast(`${v.equipo} · bloqueo por repuesto quitado`);
+        closeActionbar();
+      } catch (e) {
+        showToast("Error al guardar: " + e.message, "var(--red)");
+      }
+    });
   }
 }
 
-function confirmStep(v, target) {
-  const label = target === "standby" ? "marcar OPERATIVO" : "marcar ENTREGADO";
+function renderReingresoForm(v) {
   abAction.innerHTML = `
-    <div class="ab-title" style="margin-bottom:10px;">¿Confirmar ${label} para ${v.equipo}?</div>
+    <div class="hint" style="margin-bottom:12px;">
+      Esto cierra el registro actual de <b style="color:var(--text)">${v.equipo}</b> (queda su reparación y standby anteriores para el reporte) y abre uno nuevo en "En mantenimiento" con la avería que se presentó ahora.
+    </div>
+    <div class="field">
+      <label for="fReingresoTipo">Tipo de la nueva falla</label>
+      <select id="fReingresoTipo"></select>
+    </div>
+    <div class="field">
+      <label for="fReingresoDesc">Descripción de la nueva falla</label>
+      <input type="text" id="fReingresoDesc" placeholder="Ej. Falla eléctrica en arranque" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="fReingresoFecha">Fecha y hora del reingreso</label>
+      <input type="datetime-local" id="fReingresoFecha" value="${toDatetimeLocal(Date.now())}">
+    </div>
     <div class="confirm-row">
-      <button class="btn cancel" id="abCancel">Cancelar</button>
-      <button class="btn confirm" id="abConfirm">Sí, confirmar</button>
+      <button class="btn cancel" id="fReingresoCancel">Cancelar</button>
+      <button class="btn confirm red" id="fReingresoConfirm">Confirmar reingreso</button>
     </div>
   `;
-  document.getElementById("abCancel").addEventListener("click", () => renderAction(v));
-  document.getElementById("abConfirm").addEventListener("click", async () => {
-    const ref = doc(db, COLLECTION, v.id);
-    const now = Date.now();
+  const sel = document.getElementById("fReingresoTipo");
+  TIPOS_FALLA.forEach(t => {
+    const opt = document.createElement("option");
+    opt.value = t; opt.textContent = t;
+    sel.appendChild(opt);
+  });
+
+  document.getElementById("fReingresoCancel").addEventListener("click", () => renderAction(v));
+  document.getElementById("fReingresoConfirm").addEventListener("click", async () => {
+    const tipoFalla = sel.value;
+    const descripcionFalla = document.getElementById("fReingresoDesc").value.trim();
+    const fechaVal = document.getElementById("fReingresoFecha").value;
+    const fecha = fromDatetimeLocal(fechaVal) ?? Date.now();
     try {
-      if (target === "standby") {
-        await updateDoc(ref, { estado: ESTADOS.STANDBY, operativoAt: now });
-        showToast(`${v.equipo} pasó a Standby`);
-      } else {
-        await updateDoc(ref, { estado: ESTADOS.ENTREGADO, salidaAt: now });
-        showToast(`${v.equipo} entregado al operador`);
-      }
+      await updateDoc(doc(db, COLLECTION, v.id), { estado: ESTADOS.REINGRESO, cierreAt: fecha });
+      await addDoc(collection(db, COLLECTION), {
+        equipo: v.equipo, empresa: v.empresa, ubicacion: v.ubicacion,
+        tipoFalla, descripcionFalla, horometro: v.horometro != null ? v.horometro : null,
+        estado: ESTADOS.REPARACION, ingresoAt: fecha, operativoAt: null, salidaAt: null,
+        prioridad: v.prioridad || null, avance: null, bloqueadoPorRepuesto: false, repuestoPendiente: null
+      });
+      showToast(`${v.equipo} volvió a mantenimiento · ${tipoFalla}`);
       closeActionbar();
     } catch (e) {
-      showToast("Error al actualizar: " + e.message, "var(--red)");
+      showToast("Error al guardar: " + e.message, "var(--red)");
+    }
+  });
+}
+
+function renderEditForm(v) {
+  abAction.innerHTML = `
+    <div class="edit-form">
+      <div class="field">
+        <label>Equipo</label>
+        <input type="text" id="eEquipo" value="${v.equipo}">
+      </div>
+      <div class="field">
+        <label>Empresa</label>
+        <input type="text" id="eEmpresa" list="empresas" value="${v.empresa}">
+      </div>
+      <div class="field">
+        <label>Ubicación</label>
+        <input type="text" id="eUbicacion" list="ubicaciones" value="${v.ubicacion}">
+      </div>
+      <div class="field">
+        <label>Tipo de falla</label>
+        <select id="eFalla"></select>
+      </div>
+      <div class="field">
+        <label>Descripción de la falla</label>
+        <input type="text" id="eFallaDesc" value="${v.descripcionFalla || ""}">
+      </div>
+      <div class="field">
+        <label>Horómetro (h)</label>
+        <input type="number" id="eHorometro" value="${v.horometro != null ? v.horometro : ""}" min="0" step="1" inputmode="numeric">
+      </div>
+      <div class="field checkbox-field">
+        <input type="checkbox" id="eCritico" ${v.prioridad === PRIORIDADES.CRITICO ? "checked" : ""}>
+        <label for="eCritico">Marcar equipo como crítico</label>
+      </div>
+      <div class="field">
+        <label>Fecha y hora de ingreso</label>
+        <input type="datetime-local" id="eIngresoAt" value="${toDatetimeLocal(v.ingresoAt)}">
+      </div>
+    </div>
+    <div class="confirm-row">
+      <button class="btn cancel" id="eCancel">Cancelar</button>
+      <button class="btn confirm" id="eSave">Guardar cambios</button>
+    </div>
+  `;
+
+  const eFallaSelect = document.getElementById("eFalla");
+  TIPOS_FALLA.forEach(t => {
+    const opt = document.createElement("option");
+    opt.value = t; opt.textContent = t;
+    if (t === v.tipoFalla) opt.selected = true;
+    eFallaSelect.appendChild(opt);
+  });
+
+  document.getElementById("eCancel").addEventListener("click", () => renderAction(v));
+  document.getElementById("eSave").addEventListener("click", async () => {
+    const equipo = document.getElementById("eEquipo").value.trim();
+    const empresa = document.getElementById("eEmpresa").value.trim();
+    const ubicacion = document.getElementById("eUbicacion").value.trim();
+    const tipoFalla = eFallaSelect.value;
+    const descripcionFalla = document.getElementById("eFallaDesc").value.trim();
+    const horometroRaw = document.getElementById("eHorometro").value.trim();
+    const horometro = horometroRaw === "" ? null : Number(horometroRaw);
+    const critico = document.getElementById("eCritico").checked;
+    const ingresoAt = fromDatetimeLocal(document.getElementById("eIngresoAt").value) ?? v.ingresoAt;
+
+    if (!equipo || !empresa || !ubicacion) {
+      showToast("Completa equipo, empresa y ubicación", "var(--red)");
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, COLLECTION, v.id), {
+        equipo, empresa, ubicacion, tipoFalla, descripcionFalla, horometro, ingresoAt,
+        prioridad: critico ? PRIORIDADES.CRITICO : null
+      });
+      showToast(`${equipo} actualizado`);
+      closeActionbar();
+    } catch (e) {
+      showToast("Error al guardar: " + e.message, "var(--red)");
     }
   });
 }
 
 // live tick for elapsed times shown in the list
 setInterval(() => {
-  document.querySelectorAll(".eq-time[data-since]").forEach(el => {
+  document.querySelectorAll(".eq-datetime .elapsed[data-since]").forEach(el => {
     const since = Number(el.dataset.since);
     if (since) el.textContent = formatHMS(Date.now() - since);
   });
@@ -425,7 +736,7 @@ onSnapshot(q, (snap) => {
   statusEl.classList.remove("off");
   statusText.textContent = "sincronizado";
   const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  activos = all.filter(v => v.estado !== ESTADOS.ENTREGADO);
+  activos = all.filter(v => v.estado === ESTADOS.REPARACION || v.estado === ESTADOS.STANDBY);
   renderList();
 }, (err) => {
   statusEl.classList.add("off");
