@@ -52,7 +52,7 @@
   .status .dot{ width:8px; height:8px; border-radius:50%; background: var(--green); flex-shrink:0; }
   .status.off .dot{ background: var(--red); }
 
-  .tabs{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:16px; }
+  .tabs{ display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:6px; margin-top:16px; }
   .tab{
     padding:13px 6px; text-align:center;
     background: var(--card); border:1px solid var(--border); border-radius:10px;
@@ -60,6 +60,7 @@
     color: var(--text-dim); cursor:pointer;
   }
   .tab.active{ background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .tab{ font-size:10.5px; padding:12px 4px; }
 
   main{ padding: 18px; }
   section{ display:none; }
@@ -159,6 +160,16 @@
   .edit-form .field{ margin-bottom:12px; }
   .edit-form .field label{ margin-bottom:6px; font-size:11px; }
 
+  .m-divider{
+    margin:22px 0 12px; font-family:'IBM Plex Mono', monospace; font-size:11px; color: var(--text-faint);
+    text-transform:uppercase; letter-spacing:0.06em; border-top:1px solid var(--border); padding-top:16px;
+  }
+  .obs-eq-card{ background: var(--card); border:1px solid var(--border); border-radius:10px; padding:13px 14px; margin-bottom:10px; }
+  .obs-eq-head{ font-weight:700; font-size:15px; }
+  .obs-eq-head span{ font-weight:400; font-size:11px; color: var(--text-faint); text-transform:uppercase; margin-left:6px; }
+  .obs-item{ display:flex; align-items:flex-start; gap:9px; font-size:13.5px; line-height:1.45; margin-top:10px; color: var(--text); }
+  .obs-item input{ width:19px; height:19px; margin-top:1px; flex-shrink:0; accent-color: var(--accent); }
+
   .toast{
     position:fixed; top:16px; left:50%; transform:translateX(-50%) translateY(-20px);
     background: var(--card-2); border:1px solid var(--border); border-left:4px solid var(--green);
@@ -180,7 +191,8 @@
   <div class="tabs">
     <div class="tab active" data-tab="ingreso">Ingreso</div>
     <div class="tab" data-tab="actualizar">Estado</div>
-    <div class="tab" data-tab="plan">Plan Semanal</div>
+    <div class="tab" data-tab="observacion">Observación</div>
+    <div class="tab" data-tab="plan">Plan</div>
   </div>
 </header>
 
@@ -234,6 +246,37 @@
     <div class="empty" id="eqEmpty" hidden>No hay equipos en taller.</div>
   </section>
 
+  <section id="tab-observacion">
+    <div class="field">
+      <div class="hint">Para un equipo que sigue operativo en campo pero tiene algo pendiente de anotar. No lo manda a mantenimiento ni cambia su estado.</div>
+    </div>
+    <div class="field">
+      <label for="oEquipo">Equipo</label>
+      <input type="text" id="oEquipo" placeholder="Ej. CV-00478" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="oEmpresa">Empresa</label>
+      <input type="text" id="oEmpresa" list="empresas" placeholder="Ej. MD, ST, OR, Komatsu…" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="oUbicacion">Ubicación (opcional)</label>
+      <input type="text" id="oUbicacion" list="ubicaciones" placeholder="Ej. Taller F" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="oHorometro">Horómetro (h)</label>
+      <input type="number" id="oHorometro" placeholder="Ej. 12450" min="0" step="1" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label for="oTexto">Observación</label>
+      <input type="text" id="oTexto" placeholder="Ej. Presión de llantas baja, revisar en el próximo mantenimiento" autocomplete="off">
+    </div>
+    <button class="btn primary" id="btnObs">Registrar observación</button>
+
+    <div class="m-divider">Pendientes — toca el check para resolverla</div>
+    <div id="obsPendList"></div>
+    <div class="empty" id="obsPendEmpty" hidden>Sin observaciones pendientes.</div>
+  </section>
+
   <section id="tab-plan">
     <div class="field">
       <div class="hint">Este dato es independiente de los equipos — es el % de avance del plan de trabajo semanal del taller, y solo se actualiza a mano desde aquí.</div>
@@ -263,10 +306,10 @@
 <script type="module">
 import { db } from "./firebase-init.js";
 import {
-  collection, addDoc, doc, updateDoc, setDoc, onSnapshot, query, orderBy
+  collection, addDoc, doc, updateDoc, setDoc, deleteDoc, onSnapshot, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import {
-  COLLECTION, ESTADOS, PRIORIDADES, PLAN_COLLECTION, PLAN_DOC,
+  COLLECTION, ESTADOS, PRIORIDADES, PLAN_COLLECTION, PLAN_DOC, OBS_COLLECTION,
   TIPOS_FALLA, UBICACIONES_SUGERIDAS, EMPRESAS_SUGERIDAS, formatHMS, formatDateTime,
   toDatetimeLocal, fromDatetimeLocal
 } from "./shared.js";
@@ -365,6 +408,90 @@ document.getElementById("btnIngreso").addEventListener("click", async () => {
     btn.disabled = false;
   }
 });
+
+// ---------- observaciones (equipo operativo en campo, independiente del flujo) ----------
+document.getElementById("btnObs").addEventListener("click", async () => {
+  const equipo = document.getElementById("oEquipo").value.trim();
+  const empresa = document.getElementById("oEmpresa").value.trim();
+  const ubicacion = document.getElementById("oUbicacion").value.trim();
+  const horometroRaw = document.getElementById("oHorometro").value.trim();
+  const horometro = horometroRaw === "" ? null : Number(horometroRaw);
+  const texto = document.getElementById("oTexto").value.trim();
+
+  if (!equipo || !empresa || !texto) {
+    showToast("Completa equipo, empresa y la observación", "var(--red)");
+    return;
+  }
+
+  const btn = document.getElementById("btnObs");
+  btn.disabled = true;
+  try {
+    await addDoc(collection(db, OBS_COLLECTION), {
+      equipo, empresa, ubicacion, horometro, texto,
+      resuelta: false,
+      createdAt: Date.now()
+    });
+    document.getElementById("oEquipo").value = "";
+    document.getElementById("oEmpresa").value = "";
+    document.getElementById("oUbicacion").value = "";
+    document.getElementById("oHorometro").value = "";
+    document.getElementById("oTexto").value = "";
+    showToast(`Observación registrada para ${equipo}`);
+  } catch (e) {
+    showToast("Error al guardar: " + e.message, "var(--red)");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+const obsPendListEl = document.getElementById("obsPendList");
+const obsPendEmptyEl = document.getElementById("obsPendEmpty");
+
+function renderObsPend(obsList) {
+  const pending = obsList.filter(o => !o.resuelta);
+  const grouped = {};
+  pending.forEach(o => {
+    if (!grouped[o.equipo]) grouped[o.equipo] = { equipo: o.equipo, empresa: o.empresa, ubicacion: o.ubicacion, notas: [] };
+    grouped[o.equipo].notas.push(o);
+  });
+  const groups = Object.values(grouped);
+
+  obsPendListEl.innerHTML = "";
+  obsPendEmptyEl.hidden = groups.length > 0;
+
+  groups.forEach(g => {
+    const card = document.createElement("div");
+    card.className = "obs-eq-card";
+    const metaTxt = [g.empresa, g.ubicacion].filter(Boolean).join(" · ");
+    card.innerHTML = `
+      <div class="obs-eq-head">${g.equipo}${metaTxt ? `<span>${metaTxt}</span>` : ""}</div>
+      ${g.notas.map(n => `
+        <label class="obs-item">
+          <input type="checkbox" data-obs-id="${n.id}">
+          <span>${n.texto}</span>
+        </label>
+      `).join("")}
+    `;
+    card.querySelectorAll("input[type=checkbox]").forEach(chk => {
+      chk.addEventListener("change", async () => {
+        if (!chk.checked) return;
+        try {
+          await deleteDoc(doc(db, OBS_COLLECTION, chk.dataset.obsId));
+        } catch (e) {
+          showToast("Error al resolver: " + e.message, "var(--red)");
+          chk.checked = false;
+        }
+      });
+    });
+    obsPendListEl.appendChild(card);
+  });
+}
+
+const qObs = query(collection(db, OBS_COLLECTION), orderBy("createdAt", "desc"));
+onSnapshot(qObs, (snap) => {
+  const obsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderObsPend(obsList);
+}, (err) => console.error(err));
 
 // ---------- plan semanal (independiente de los equipos) ----------
 const planRef = doc(db, PLAN_COLLECTION, PLAN_DOC);
@@ -473,6 +600,10 @@ function renderAction(v) {
         <input type="text" id="fUbicacionStandby" list="ubicaciones" value="${v.ubicacion}">
         <div class="hint">Prellenada con la ubicación actual — cámbiala si el equipo se movió al pasar a standby.</div>
       </div>
+      <div class="field">
+        <label for="fHorometroStandby">Horómetro (h)</label>
+        <input type="number" id="fHorometroStandby" value="${v.horometro != null ? v.horometro : ""}" min="0" step="1" inputmode="numeric">
+      </div>
       <button class="btn standby" id="abBtn">Listo / Operativo</button>
       <button class="edit-link" id="abAvance">Actualizar % de avance — relevo de turno</button>
       <button class="edit-link" id="abRepuesto" style="color:${v.bloqueadoPorRepuesto ? "var(--red)" : "var(--text-dim)"};">${v.bloqueadoPorRepuesto ? "🛑 Editar bloqueo por repuesto" : "Marcar bloqueado por repuesto"}</button>
@@ -481,12 +612,15 @@ function renderAction(v) {
     document.getElementById("abBtn").addEventListener("click", async () => {
       const val = document.getElementById("fFechaOperativo").value;
       const nuevaUbic = document.getElementById("fUbicacionStandby").value.trim();
+      const horometroRaw = document.getElementById("fHorometroStandby").value.trim();
+      const horometro = horometroRaw === "" ? v.horometro ?? null : Number(horometroRaw);
       const operativoAt = fromDatetimeLocal(val) ?? Date.now();
       try {
         await updateDoc(doc(db, COLLECTION, v.id), {
           estado: ESTADOS.STANDBY,
           operativoAt,
-          ubicacion: nuevaUbic || v.ubicacion
+          ubicacion: nuevaUbic || v.ubicacion,
+          horometro
         });
         showToast(`${v.equipo} pasó a Standby`);
         closeActionbar();
@@ -503,6 +637,10 @@ function renderAction(v) {
         <input type="datetime-local" id="fFechaEntrega" value="${toDatetimeLocal(Date.now())}">
         <div class="hint">Se llena sola con la hora actual — cámbiala solo si olvidaste registrarlo al momento.</div>
       </div>
+      <div class="field">
+        <label for="fHorometroEntrega">Horómetro (h)</label>
+        <input type="number" id="fHorometroEntrega" value="${v.horometro != null ? v.horometro : ""}" min="0" step="1" inputmode="numeric">
+      </div>
       <button class="btn entregar" id="abBtn">Entregado a operador</button>
       <button class="edit-link" id="abVolver">Volver a mantenimiento — se presentó otra avería</button>
       <button class="edit-link" id="abEdit">Editar datos del equipo</button>
@@ -510,8 +648,10 @@ function renderAction(v) {
     document.getElementById("abBtn").addEventListener("click", async () => {
       const val = document.getElementById("fFechaEntrega").value;
       const salidaAt = fromDatetimeLocal(val) ?? Date.now();
+      const horometroRaw = document.getElementById("fHorometroEntrega").value.trim();
+      const horometro = horometroRaw === "" ? v.horometro ?? null : Number(horometroRaw);
       try {
-        await updateDoc(doc(db, COLLECTION, v.id), { estado: ESTADOS.ENTREGADO, salidaAt });
+        await updateDoc(doc(db, COLLECTION, v.id), { estado: ESTADOS.ENTREGADO, salidaAt, horometro });
         showToast(`${v.equipo} entregado al operador`);
         closeActionbar();
       } catch (e) {
@@ -608,6 +748,10 @@ function renderReingresoForm(v) {
       <label for="fReingresoFecha">Fecha y hora del reingreso</label>
       <input type="datetime-local" id="fReingresoFecha" value="${toDatetimeLocal(Date.now())}">
     </div>
+    <div class="field">
+      <label for="fReingresoHorometro">Horómetro (h)</label>
+      <input type="number" id="fReingresoHorometro" value="${v.horometro != null ? v.horometro : ""}" min="0" step="1" inputmode="numeric">
+    </div>
     <div class="confirm-row">
       <button class="btn cancel" id="fReingresoCancel">Cancelar</button>
       <button class="btn confirm red" id="fReingresoConfirm">Confirmar reingreso</button>
@@ -626,11 +770,13 @@ function renderReingresoForm(v) {
     const descripcionFalla = document.getElementById("fReingresoDesc").value.trim();
     const fechaVal = document.getElementById("fReingresoFecha").value;
     const fecha = fromDatetimeLocal(fechaVal) ?? Date.now();
+    const horometroRaw = document.getElementById("fReingresoHorometro").value.trim();
+    const horometro = horometroRaw === "" ? (v.horometro != null ? v.horometro : null) : Number(horometroRaw);
     try {
       await updateDoc(doc(db, COLLECTION, v.id), { estado: ESTADOS.REINGRESO, cierreAt: fecha });
       await addDoc(collection(db, COLLECTION), {
         equipo: v.equipo, empresa: v.empresa, ubicacion: v.ubicacion,
-        tipoFalla, descripcionFalla, horometro: v.horometro != null ? v.horometro : null,
+        tipoFalla, descripcionFalla, horometro,
         estado: ESTADOS.REPARACION, ingresoAt: fecha, operativoAt: null, salidaAt: null,
         prioridad: v.prioridad || null, avance: null, bloqueadoPorRepuesto: false, repuestoPendiente: null
       });

@@ -3,7 +3,7 @@
 Sistema de 3 piezas:
 
 - **celular.html** — formulario táctil para registrar ingresos y cambiar el estado de un equipo (mecánico).
-- **tv.html** — dashboard de 3 columnas para la Smart TV (Falla / Standby / Entregados).
+- **tv.html** — dashboard de 3 columnas para la Smart TV (En mantenimiento / Equipos con Observaciones / Standby).
 - **server.js** — servidor Node solo para generar los reportes CSV/Excel desde Firestore.
 
 La sincronización en tiempo real entre el celular y la TV la hace **Firestore** directamente (ambas páginas escuchan la misma colección `equipos` con `onSnapshot`). El servidor Node no participa en el tiempo real; solo se usa para exportar reportes.
@@ -29,11 +29,16 @@ service cloud.firestore {
     match /config/{doc} {
       allow read, write: if true;
     }
+    match /observaciones/{doc} {
+      allow read, write: if true;
+    }
   }
 }
 ```
 
 La colección `config` (documento `planSemanal`) guarda el % de avance del plan semanal del taller — es un dato aparte de los equipos, editable solo desde la pestaña "Plan Semanal" del celular.
+
+La colección `observaciones` guarda notas sueltas de equipos que siguen operativos en campo (no en mantenimiento) — ver [Observaciones](#observaciones-colección-observaciones) más abajo.
 
 **Esto deja la colección abierta a cualquiera que tenga tu `apiKey`.** Es aceptable para una herramienta interna de bajo riesgo, pero si quieres restringirlo más adelante, la forma correcta es agregar Firebase Authentication (aunque sea anónima) y condicionar `allow` a `request.auth != null`.
 
@@ -90,5 +95,25 @@ Ambos incluyen: Equipo, Empresa, Ubicación, Tipo de Falla, Fecha Ingreso, Fecha
 | `actualizadoAt` | number (ms) | Última vez que se guardó desde el celular |
 
 Es un dato independiente de los equipos — no pertenece a ningún documento de `equipos`, se lee y escribe directo desde la pestaña "Plan Semanal" del celular y se muestra en la tercera tarjeta de métricas de la TV.
+
+El sub-texto "X/Y OT cerradas hoy" y la flecha de tendencia que aparecen junto al % se calculan solos en `tv.html` a partir de las órdenes de trabajo (documentos de `equipos`) abiertas en la jornada actual — no son parte de este documento y no se editan a mano.
+
+## Observaciones (colección `observaciones`)
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `equipo` | string | Equipo al que pertenece la nota |
+| `empresa` | string | Contrata dueña del equipo |
+| `ubicacion` | string | Opcional |
+| `horometro` | number \| null | Lectura del horómetro al momento de anotar |
+| `texto` | string | La observación en sí |
+| `resuelta` | boolean | Siempre `false` al crearse; el documento se borra al marcarse resuelta desde el celular |
+| `createdAt` | number (ms) | Momento en que se registró |
+
+Son notas para un equipo que **sigue operativo en campo** (no está en mantenimiento ni en standby) — completamente independientes del flujo de `equipos`. Se crean y se resuelven desde la pestaña "Observación" del celular; la TV solo las agrupa por equipo y las muestra en modo lectura en la columna "Equipos con Observaciones".
+
+## Logo en la TV
+
+`tv.html` carga `logo-stracon.png` (junto a `tv.html` en la misma carpeta) para el logo centrado en la barra superior. Si subes los archivos a GitHub, asegúrate de incluir ese PNG en el mismo repositorio.
 
 Tiempo en reparación = `operativoAt - ingresoAt`. Tiempo en standby = `(salidaAt || ahora) - operativoAt`. Tiempo total = `(salidaAt || ahora) - ingresoAt`.

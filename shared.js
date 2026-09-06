@@ -1,5 +1,11 @@
 export const COLLECTION = "equipos";
 
+// Notas ligadas a un equipo que sigue operativo en campo — independientes del
+// flujo de reparación/standby/entregado. Se crean y se marcan resueltas desde
+// la pestaña "Observación" del celular; la TV solo las muestra agrupadas por
+// equipo, en modo lectura.
+export const OBS_COLLECTION = "observaciones";
+
 export const ESTADOS = {
   REPARACION: "reparacion",
   STANDBY: "standby",
