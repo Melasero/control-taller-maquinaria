@@ -72,21 +72,32 @@
   }
 
   /* ---- métricas (incluye tendencia del Plan Semanal) ---- */
-  .metrics-row{ display:grid; grid-template-columns:1fr 1fr 1.2fr 1fr; gap:12px; padding:12px 44px 0; flex-shrink:0; }
+  .metrics-row{ display:grid; grid-template-columns:1.2fr 0.9fr 1.3fr 0.9fr; gap:12px; padding:12px 44px 0; flex-shrink:0; }
   .metric-card{
     background: var(--panel-2); border:1px solid var(--border); border-radius:12px; padding:10px 18px;
     display:flex; align-items:center; gap:12px;
   }
   .metric-card .m-ind{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-  .metric-card.red .m-ind{ background: var(--red); box-shadow:0 0 0 5px var(--red-dim); }
-  .metric-card.green .m-ind{ background: var(--green); box-shadow:0 0 0 5px var(--green-dim); }
   .metric-card .m-num{
     font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:26px; line-height:1;
     font-variant-numeric: tabular-nums;
   }
-  .metric-card.red .m-num{ color: var(--red); }
-  .metric-card.green .m-num{ color: var(--green); }
   .metric-card .m-label{ font-size:10px; color: var(--text-dim); text-transform:uppercase; letter-spacing:0.05em; margin-top:2px; }
+
+  .split-card{ justify-content:space-between; padding:10px 12px; gap:0; }
+  .split-half{
+    display:flex; align-items:center; gap:10px; flex:1; cursor:pointer;
+    padding:4px 8px; border-radius:8px; transition: background .15s ease;
+  }
+  .split-half:hover{ background: var(--panel); }
+  .split-divider{ width:1px; align-self:stretch; margin:2px 6px; background: var(--border); flex-shrink:0; }
+  .split-half.rep .m-ind{ background: var(--red); box-shadow:0 0 0 5px var(--red-dim); }
+  .split-half.rep .m-num{ color: var(--red); }
+  .split-half.sby .m-ind{ background: var(--green); box-shadow:0 0 0 5px var(--green-dim); }
+  .split-half.sby .m-num{ color: var(--green); }
+
+  .mttr-ind{ background: var(--accent); box-shadow:0 0 0 5px var(--accent-dim); }
+  .mttr-num{ color: var(--accent); }
   .metric-card.plan{ flex-direction:column; align-items:stretch; gap:5px; }
   .plan-row1{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
   .plan-title-mini{ font-size:10px; color: var(--text-faint); text-transform:uppercase; letter-spacing:0.05em; font-weight:600; }
@@ -121,8 +132,16 @@
   .ot-upload-btn.error{ color: var(--red); }
   .ot-upload-btn:disabled{ cursor:default; opacity:0.7; }
   .metric-card.plan .plan-top{ display:flex; align-items:baseline; gap:8px; }
-  .metric-card.plan .m-num{ color: var(--accent); font-size:24px; }
+  .metric-card.plan .m-num{ color: var(--accent); font-size:24px; transition: color .3s ease; }
   .plan-sub{ font-size:10px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+  /* indicador sutil: el % real queda muy por debajo de lo esperado para el día de la semana en curso */
+  .metric-card.plan.plan-alerta{ border-color: rgba(251,191,36,0.28); }
+  .metric-card.plan.plan-alerta .m-num{ color: var(--yellow); }
+  .metric-card.plan.plan-alerta .metric-bar-fill{ background: var(--yellow); }
+  .metric-card.plan.plan-critico{ border-color: rgba(242,73,92,0.32); }
+  .metric-card.plan.plan-critico .m-num{ color: var(--red); }
+  .metric-card.plan.plan-critico .metric-bar-fill{ background: var(--red); }
   .metric-bar{ height:5px; border-radius:999px; background: var(--panel); overflow:hidden; }
   .metric-bar-fill{ height:100%; border-radius:999px; background: var(--accent); transition: width .4s ease; }
 
@@ -166,6 +185,7 @@
   .sort-toggle:hover{ border-color: var(--text-faint); }
   .sort-toggle.active{ background: var(--accent-dim); color: var(--accent); border-color: rgba(94,200,245,0.4); }
   .hint-tv{ padding:0 20px 10px; font-size:10px; color: var(--text-faint); text-align:center; text-transform:uppercase; letter-spacing:0.04em; flex-shrink:0; }
+  .col-stat-hoy{ padding:0 22px 10px; font-size:11.5px; color: var(--green); font-weight:600; flex-shrink:0; }
 
   .list{ flex:1; overflow-y:auto; padding:2px 18px 18px; display:flex; flex-direction:column; gap:6px; }
   .list::-webkit-scrollbar{ width:7px; }
@@ -264,7 +284,7 @@
   .meta-tag.location{ background:transparent; color: var(--text-faint); border:none; padding-left:0; }
 
   .falla-desc{
-    margin-top:4px; font-size:11.5px; line-height:1.35; color: var(--text-dim);
+    margin-top:4px; font-size:11.5px; line-height:1.35; color: var(--text);
     display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
   }
 
@@ -274,10 +294,31 @@
   }
   .parts-alert .ic{ font-size:13px; flex-shrink:0; }
 
+  .fecha-est-alert{
+    display:flex; align-items:center; gap:7px; margin-top:7px; padding:6px 9px; border-radius:8px;
+    background: var(--accent-dim); border:1px solid rgba(94,200,245,0.3); font-size:11.5px; color:#bae6fd; line-height:1.4;
+  }
+  .fecha-est-alert .ic{ font-size:13px; flex-shrink:0; }
+  .fecha-est-alert.vencido{ background: rgba(251,191,36,0.14); border-color: rgba(251,191,36,0.35); color:#fde68a; }
+
   /* tarjeta de "Equipos con Observaciones": solo equipo + notas, sin cronómetro */
   .obs-list{ margin-top:7px; display:flex; flex-direction:column; gap:5px; }
   .obs-item{ display:flex; align-items:flex-start; gap:7px; font-size:13px; line-height:1.4; color: var(--text); }
   .obs-item .bullet{ color: var(--yellow); font-size:8px; flex-shrink:0; margin-top:6px; }
+
+  /* solo dentro del modal de detalle: cada nota se puede tocar para resolverla */
+  .obs-item.clickable{
+    gap:8px; cursor:pointer; padding:4px 5px; margin:-4px -5px; border-radius:7px;
+    transition: background .15s ease, opacity .25s ease, transform .25s ease;
+  }
+  .obs-item.clickable:hover{ background: rgba(255,255,255,0.05); }
+  .obs-item.clickable.resolviendo{ opacity:0; transform: translateX(10px); }
+  .obs-check{
+    width:16px; height:16px; flex-shrink:0; margin-top:1px; border-radius:5px; border:2px solid var(--yellow-line);
+    display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; color:transparent;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .obs-item.resolviendo .obs-check{ background: var(--green); border-color: var(--green); color:#06210f; }
 
   /* ---- modal de detalle ---- */
   .modal-backdrop{
@@ -371,6 +412,15 @@
   .ot-row-desc{ margin-top:3px; font-size:13px; color: var(--text); line-height:1.4; }
   .ot-row-meta{ margin-top:4px; font-size:11px; color: var(--text-faint); text-transform:uppercase; letter-spacing:0.03em; }
   .modal-close:hover{ color: var(--text); }
+
+  .tv-toast{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(12px);
+    background: var(--panel-2); border:1px solid var(--green-line); border-left:4px solid var(--green);
+    color: var(--text); font-size:13.5px; padding:12px 20px; border-radius:10px; z-index:60;
+    box-shadow: 0 14px 34px rgba(0,0,0,0.45);
+    opacity:0; pointer-events:none; transition: opacity .2s ease, transform .2s ease;
+  }
+  .tv-toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
@@ -390,13 +440,20 @@
 <div class="credit-fixed">Diseño · Vins Rivera</div>
 
 <div class="metrics-row">
-  <div class="metric-card red volq-card" id="fallaResumenCard" title="Ver el detalle por tipo de equipo">
-    <span class="m-ind"></span>
-    <div><div class="m-num" id="metricFalla">0</div><div class="m-label">Equipos en Mantenimiento</div></div>
+  <div class="metric-card split-card">
+    <div class="split-half rep" id="fallaResumenCard" title="Ver el detalle por tipo de equipo">
+      <span class="m-ind"></span>
+      <div><div class="m-num" id="metricFalla">0</div><div class="m-label">Reparación</div></div>
+    </div>
+    <div class="split-divider"></div>
+    <div class="split-half sby" id="standbyResumenCard" title="Ver los equipos entregados en este turno">
+      <span class="m-ind"></span>
+      <div><div class="m-num" id="metricStandby">0</div><div class="m-label">Standby</div></div>
+    </div>
   </div>
-  <div class="metric-card green volq-card" id="standbyResumenCard" title="Ver los equipos entregados en este turno">
-    <span class="m-ind"></span>
-    <div><div class="m-num" id="metricStandby">0</div><div class="m-label">Equipos en Standby</div></div>
+  <div class="metric-card">
+    <span class="m-ind mttr-ind"></span>
+    <div><div class="m-num mttr-num" id="metricMttr">—</div><div class="m-label">MTTR Promedio (30 días)</div></div>
   </div>
   <div class="metric-card plan volq-card" id="planCard" title="Ver las OT de esta semana">
     <div class="plan-row1">
@@ -454,6 +511,7 @@
       <div class="label"><span class="ind green"></span><h2>Standby / Operativos en Taller</h2></div>
       <div class="count" id="countStandby">0</div>
     </div>
+    <div class="col-stat-hoy" id="entregadosHoyStat">0 entregados hoy</div>
     <div class="list" id="listStandby"></div>
   </div>
 </div>
@@ -462,10 +520,12 @@
   <div class="modal" id="modalBox"></div>
 </div>
 
+<div class="tv-toast" id="tvToast"></div>
+
 <script type="module">
 import { db } from "./firebase-init.js";
 import {
-  collection, doc, onSnapshot, query, orderBy, updateDoc, writeBatch
+  collection, doc, onSnapshot, query, orderBy, updateDoc, writeBatch, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import {
   ESTADOS, PRIORIDADES, STANDBY_ALERT_MS, PLAN_COLLECTION, PLAN_DOC, OBS_COLLECTION, OT_PLAN_COLLECTION,
@@ -486,6 +546,16 @@ function tickClock(){
 tickClock();
 setInterval(tickClock, 1000);
 
+// ---------- toast de confirmación ----------
+const tvToastEl = document.getElementById("tvToast");
+let tvToastTimer = null;
+function mostrarToast(msg){
+  tvToastEl.textContent = msg;
+  tvToastEl.classList.add("show");
+  if(tvToastTimer) clearTimeout(tvToastTimer);
+  tvToastTimer = setTimeout(() => tvToastEl.classList.remove("show"), 2600);
+}
+
 const listFallaEl = document.getElementById("listFalla");
 const listStandbyEl = document.getElementById("listStandby");
 const listObsEl = document.getElementById("listObs");
@@ -493,6 +563,14 @@ const countFallaEl = document.getElementById("countFalla");
 const countStandbyEl = document.getElementById("countStandby");
 const countObsEl = document.getElementById("countObs");
 const metricFallaEl = document.getElementById("metricFalla");
+const metricMttrEl = document.getElementById("metricMttr");
+function renderMttr(){
+  const hace30d = Date.now() - 30 * 86400000;
+  const completados = fleet.filter(v => v.ingresoAt && v.operativoAt && v.operativoAt >= hace30d);
+  if(completados.length === 0){ metricMttrEl.textContent = "—"; return; }
+  const horas = completados.reduce((sum, v) => sum + (v.operativoAt - v.ingresoAt), 0) / completados.length / 3600000;
+  metricMttrEl.textContent = horas.toFixed(1) + "h";
+}
 const FALLA_SORT_MODES = ["reciente", "alpha", "parada"];
 const FALLA_SORT_LABELS = { reciente: "Recientes", alpha: "A-Z", parada: "Parada &#8595;" };
 const FALLA_SORT_TITLES = {
@@ -515,6 +593,13 @@ fallaSortToggleEl.addEventListener("click", () => {
 });
 updateFallaSortToggleUI();
 const metricStandbyEl = document.getElementById("metricStandby");
+const entregadosHoyStatEl = document.getElementById("entregadosHoyStat");
+function renderEntregadosHoy(){
+  const hoyStart = jornadaStart(Date.now());
+  const hoyEnd = hoyStart + 86400000;
+  const n = fleet.filter(v => v.estado === ESTADOS.ENTREGADO && v.salidaAt >= hoyStart && v.salidaAt < hoyEnd).length;
+  entregadosHoyStatEl.textContent = `${n} entregado${n === 1 ? "" : "s"} hoy`;
+}
 
 const nodeMap = {};
 let fleet = [];
@@ -659,6 +744,11 @@ function partsAlert(v){
   if(!v.bloqueadoPorRepuesto) return "";
   return `<div class="parts-alert"><span class="ic">&#128721;</span><span>Bloqueado por repuesto: <b>${v.repuestoPendiente || "sin especificar"}</b></span></div>`;
 }
+function fechaEstimadaAlert(v){
+  if(!v.fechaEstimada) return "";
+  const vencido = v.fechaEstimada < Date.now();
+  return `<div class="fecha-est-alert${vencido ? " vencido" : ""}"><span class="ic">&#128197;</span><span>${vencido ? "Estimado vencido: " : "Estimado: "}<b>${formatDateTime(v.fechaEstimada)}</b></span></div>`;
+}
 
 function buildFallaCard(v){
   const card = document.createElement("div");
@@ -678,6 +768,7 @@ function buildFallaCard(v){
         ${tipoFallaTag(v.tipoFalla)}
       </div>
     </div>
+    ${fechaEstimadaAlert(v)}
     ${partsAlert(v)}
   `;
   card.addEventListener("click", () => openModal(v, "red", "En mantenimiento"));
@@ -735,6 +826,9 @@ function openModal(v, color, stateLabel){
   const repuestoHtml = v.bloqueadoPorRepuesto
     ? `<div class="parts-alert" style="margin-top:14px;"><span class="ic">&#128721;</span><span>Bloqueado por repuesto: <b>${v.repuestoPendiente || "sin especificar"}</b></span></div>`
     : "";
+  const fechaEstHtml = v.fechaEstimada
+    ? `<div class="fecha-est-alert${v.fechaEstimada < Date.now() ? " vencido" : ""}" style="margin-top:14px;"><span class="ic">&#128197;</span><span>${v.fechaEstimada < Date.now() ? "Estimado vencido: " : "Estimado: "}<b>${formatDateTime(v.fechaEstimada)}</b></span></div>`
+    : "";
   modalBox.innerHTML = `
     <div class="modal-head">
       <div><div class="modal-eq-row">${equipoIcon(v.equipo)}<div class="modal-eq">${v.equipo}${isCritico(v) ? ` <span class="critico-mini" style="vertical-align:middle;">Crítico</span>` : ""}</div></div></div>
@@ -743,6 +837,7 @@ function openModal(v, color, stateLabel){
     <div class="modal-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}${v.tipoFalla ? `<span class="sep">&middot;</span>${v.tipoFalla}` : ""}</div>
     ${descHtml}
     ${repuestoHtml}
+    ${fechaEstHtml}
     <div class="modal-grid">
       <div class="modal-field"><span class="cap">Ingresó a taller</span><div class="val">${formatDateTime(v.ingresoAt)}</div></div>
       <div class="modal-field"><span class="cap">Horómetro</span><div class="val">${horometroTxt}</div></div>
@@ -755,15 +850,35 @@ function openModal(v, color, stateLabel){
 }
 function openObsModal(g){
   planModalOpen = false;
-  const itemsHtml = g.notas.map(n => `<div class="obs-item"><span class="bullet">&#9679;</span><span>${n.texto}</span></div>`).join("");
+  const itemsHtml = g.notas.map(n => `
+    <div class="obs-item clickable" data-nota-id="${n.id}">
+      <span class="obs-check"></span>
+      <span class="obs-text">${n.texto}</span>
+    </div>
+  `).join("");
   modalBox.innerHTML = `
     <div class="modal-head">
       <div><div class="modal-eq-row">${equipoIcon(g.equipo)}<div class="modal-eq">${g.equipo}</div></div></div>
       <span class="modal-state yellow">Con observaciones</span>
     </div>
     <div class="modal-meta">${g.notas.length} nota${g.notas.length === 1 ? "" : "s"} pendiente${g.notas.length === 1 ? "" : "s"}${g.horometro != null ? `<span class="sep">&middot;</span>${g.horometro} HM` : ""}</div>
+    <div class="modal-meta" style="margin-top:2px;">Toca una nota para marcarla resuelta</div>
     <div class="obs-list" style="margin-top:16px;">${itemsHtml}</div>
   `;
+  modalBox.querySelectorAll(".obs-item.clickable").forEach(itemEl => {
+    itemEl.addEventListener("click", () => {
+      if(itemEl.classList.contains("resolviendo")) return;
+      const notaId = itemEl.dataset.notaId;
+      const texto = itemEl.querySelector(".obs-text").textContent;
+      itemEl.classList.add("resolviendo");
+      mostrarToast(`Observación levantada — ${g.equipo}: ${texto}`);
+      setTimeout(() => {
+        if(itemEl.parentNode) itemEl.remove();
+        if(!modalBox.querySelector(".obs-item")) closeModal();
+      }, 260);
+      deleteDoc(doc(db, OBS_COLLECTION, notaId)).catch(err => console.error(err));
+    });
+  });
   modalBackdrop.classList.add("open");
 }
 function closeModal(){ modalBackdrop.classList.remove("open"); planModalOpen = false; }
@@ -1047,6 +1162,8 @@ function render(){
 
   renderPlanSub();
   renderVolquetesGauge();
+  renderMttr();
+  renderEntregadosHoy();
   tickTimers();
 }
 
@@ -1129,6 +1246,16 @@ function isoWeekMonday(year, week){
   return target.getTime();
 }
 
+// % esperado si el avance fuera parejo a lo largo de la semana (lunes 00:00 = 0%,
+// el domingo siguiente 00:00 = 100%) — sirve para juzgar si el % real es preocupante
+// según qué tan avanzada está la semana, no como un número aislado.
+function avancePacingEsperado(semana, anio){
+  const monday = isoWeekMonday(anio, semana);
+  const diasTranscurridos = (Date.now() - monday) / 86400000;
+  const frac = Math.max(0, Math.min(7, diasTranscurridos)) / 7;
+  return frac * 100;
+}
+
 function renderPlanAvance(){
   const total = weekOts.length;
   const completadas = weekOts.filter(o => o.completada).length;
@@ -1137,6 +1264,12 @@ function renderPlanAvance(){
     : Math.max(0, Math.min(100, planAvanceManual));
   metricPlanEl.textContent = pct + "%";
   metricPlanBarEl.style.width = pct + "%";
+
+  const esperado = avancePacingEsperado(filtroSem, filtroAnio);
+  const diff = pct - esperado;
+  planCardEl.classList.remove("plan-alerta", "plan-critico");
+  if(diff < -30) planCardEl.classList.add("plan-critico");
+  else if(diff < -10) planCardEl.classList.add("plan-alerta");
 }
 
 function aplicarFiltroSemana(){

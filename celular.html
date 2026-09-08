@@ -52,7 +52,7 @@
   .status .dot{ width:8px; height:8px; border-radius:50%; background: var(--green); flex-shrink:0; }
   .status.off .dot{ background: var(--red); }
 
-  .tabs{ display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:6px; margin-top:16px; }
+  .tabs{ display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr; gap:6px; margin-top:16px; }
   .tab{
     padding:13px 6px; text-align:center;
     background: var(--card); border:1px solid var(--border); border-radius:10px;
@@ -130,6 +130,8 @@
   }
   .chip.reparacion{ background: var(--red-dim); color: var(--red); }
   .chip.standby{ background: var(--yellow-dim); color: var(--yellow); }
+  .chip.entregado{ background: var(--green-dim); color: var(--green); }
+  .chip.reingreso{ background: var(--accent-dim); color: var(--accent); }
   .eq-datetime{ font-family:'IBM Plex Mono', monospace; font-size:12.5px; color: var(--text-dim); text-align:right; }
   .eq-datetime .elapsed{ display:block; font-size:11px; color: var(--text-faint); margin-top:2px; }
 
@@ -213,6 +215,7 @@
     <div class="tab" data-tab="actualizar">Estado</div>
     <div class="tab" data-tab="observacion">Observación</div>
     <div class="tab" data-tab="plan">Plan</div>
+    <div class="tab" data-tab="historial">Historial</div>
   </div>
 </header>
 
@@ -342,6 +345,17 @@
     <div class="m-divider">OT de esta semana — toca el check al completarla</div>
     <div id="otList"></div>
     <div class="empty" id="otEmpty" hidden>Sin OT cargadas para esta semana.</div>
+  </section>
+
+  <section id="tab-historial">
+    <div class="field">
+      <div class="hint">Registros ya cerrados (entregados o cerrados por reingreso). Búscalos para corregir datos mal cargados — equipo, empresa, fechas, horómetro, etc.</div>
+    </div>
+    <div class="field search">
+      <input type="text" id="hBuscar" placeholder="Buscar por equipo o empresa…" autocomplete="off">
+    </div>
+    <div class="eq-list" id="hList"></div>
+    <div class="empty" id="hEmpty" hidden>No se encontraron registros cerrados.</div>
   </section>
 </main>
 
@@ -698,13 +712,18 @@ const abAction = document.getElementById("abAction");
 const abClose = document.getElementById("abClose");
 
 let activos = [];
+let allEquipos = [];
 let selectedId = null;
+let selectedHistorialId = null;
 let searchTerm = "";
+let historialSearchTerm = "";
 
 function closeActionbar() {
   selectedId = null;
+  selectedHistorialId = null;
   actionbar.classList.remove("open");
   renderList();
+  renderHistorial();
 }
 abClose.addEventListener("click", closeActionbar);
 
@@ -733,10 +752,14 @@ function renderList() {
     const ingresoLineHtml = v.estado === ESTADOS.STANDBY
       ? `<div class="eq-meta" style="margin-top:6px;">Ingresó ${formatDateTime(v.ingresoAt)}</div>`
       : "";
+    const fechaEstimadaTxt = v.fechaEstimada
+      ? `<div class="eq-meta" style="margin-top:2px; text-transform:none; letter-spacing:0; color:var(--accent);">&#128197; Estimado: ${formatDateTime(v.fechaEstimada)}</div>`
+      : "";
     card.innerHTML = `
       <div class="eq-name">${v.equipo}${criticoChip}</div>
       <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}${v.estado === ESTADOS.REPARACION ? `<span class="sep">&middot;</span>${v.tipoFalla}` : ""}${horometroTxt}</div>
       ${fallaDescTxt}
+      ${fechaEstimadaTxt}
       ${ingresoLineHtml}
       <div class="eq-foot">
         <span class="chip ${v.estado}">${v.estado === ESTADOS.REPARACION ? "En reparación" : "Standby"}</span>
@@ -778,8 +801,10 @@ function renderAction(v) {
       <button class="btn standby" id="abBtn">Listo / Operativo</button>
       <button class="edit-link" id="abAvance">Actualizar % de avance — relevo de turno</button>
       <button class="edit-link" id="abRepuesto" style="color:${v.bloqueadoPorRepuesto ? "var(--red)" : "var(--text-dim)"};">${v.bloqueadoPorRepuesto ? "🛑 Editar bloqueo por repuesto" : "Marcar bloqueado por repuesto"}</button>
+      <button class="edit-link" id="abFechaEstimada" style="color:${v.fechaEstimada ? "var(--accent)" : "var(--text-dim)"};">${v.fechaEstimada ? "📅 Editar fecha estimada — " + formatDateTime(v.fechaEstimada) : "Poner fecha estimada de reparación"}</button>
       <button class="edit-link" id="abEdit">Editar datos del equipo</button>
     `;
+    document.getElementById("abFechaEstimada").addEventListener("click", () => renderFechaEstimadaForm(v));
     document.getElementById("abBtn").addEventListener("click", async () => {
       const val = document.getElementById("fFechaOperativo").value;
       const nuevaUbic = document.getElementById("fUbicacionStandby").value.trim();
@@ -894,6 +919,50 @@ function renderRepuestoForm(v) {
       try {
         await updateDoc(doc(db, COLLECTION, v.id), { bloqueadoPorRepuesto: false, repuestoPendiente: null });
         showToast(`${v.equipo} · bloqueo por repuesto quitado`);
+        closeActionbar();
+      } catch (e) {
+        showToast("Error al guardar: " + e.message, "var(--red)");
+      }
+    });
+  }
+}
+
+function renderFechaEstimadaForm(v) {
+  const tieneFecha = v.fechaEstimada != null;
+  const valorInicial = tieneFecha ? toDatetimeLocal(v.fechaEstimada) : toDatetimeLocal(Date.now() + 7 * 86400000);
+  abAction.innerHTML = `
+    <div class="field">
+      <label for="fFechaEstimada">Fecha y hora estimada de reparación</label>
+      <input type="datetime-local" id="fFechaEstimada" value="${valorInicial}">
+      <div class="hint">Para equipos con una espera larga (reparación mayor, fuera de la mina, etc.) — se muestra en la tarjeta de la TV como referencia, no cambia el estado del equipo.</div>
+    </div>
+    <div class="confirm-row">
+      <button class="btn cancel" id="fFechaEstimadaCancel">Cancelar</button>
+      <button class="btn confirm" id="fFechaEstimadaGuardar">${tieneFecha ? "Actualizar" : "Guardar"}</button>
+    </div>
+    ${tieneFecha ? `<button class="edit-link" id="fFechaEstimadaQuitar">Quitar fecha estimada</button>` : ""}
+  `;
+  document.getElementById("fFechaEstimadaCancel").addEventListener("click", () => renderAction(v));
+  document.getElementById("fFechaEstimadaGuardar").addEventListener("click", async () => {
+    const val = document.getElementById("fFechaEstimada").value;
+    const fechaEstimada = fromDatetimeLocal(val);
+    if (!fechaEstimada) {
+      showToast("Elige una fecha válida", "var(--red)");
+      return;
+    }
+    try {
+      await updateDoc(doc(db, COLLECTION, v.id), { fechaEstimada });
+      showToast(`${v.equipo} · fecha estimada: ${formatDateTime(fechaEstimada)}`);
+      closeActionbar();
+    } catch (e) {
+      showToast("Error al guardar: " + e.message, "var(--red)");
+    }
+  });
+  if (tieneFecha) {
+    document.getElementById("fFechaEstimadaQuitar").addEventListener("click", async () => {
+      try {
+        await updateDoc(doc(db, COLLECTION, v.id), { fechaEstimada: null });
+        showToast(`${v.equipo} · fecha estimada quitada`);
         closeActionbar();
       } catch (e) {
         showToast("Error al guardar: " + e.message, "var(--red)");
@@ -1039,6 +1108,164 @@ function renderEditForm(v) {
   });
 }
 
+// ---------- historial (registros cerrados: entregado / reingreso) ----------
+const hListEl = document.getElementById("hList");
+const hEmptyEl = document.getElementById("hEmpty");
+
+document.getElementById("hBuscar").addEventListener("input", (e) => {
+  historialSearchTerm = e.target.value.trim().toLowerCase();
+  renderHistorial();
+});
+
+function renderHistorial() {
+  const cerrados = allEquipos
+    .filter(v => v.estado === ESTADOS.ENTREGADO || v.estado === ESTADOS.REINGRESO)
+    .filter(v => {
+      if (!historialSearchTerm) return true;
+      return v.equipo.toLowerCase().includes(historialSearchTerm) || v.empresa.toLowerCase().includes(historialSearchTerm);
+    })
+    .sort((a, b) => b.ingresoAt - a.ingresoAt);
+
+  hListEl.innerHTML = "";
+  hEmptyEl.hidden = cerrados.length > 0;
+
+  cerrados.forEach(v => {
+    const fin = v.salidaAt || v.cierreAt || v.operativoAt || v.ingresoAt;
+    const horas = Math.max(0, (fin - v.ingresoAt) / 3600000);
+    const card = document.createElement("div");
+    card.className = "eq-card" + (v.id === selectedHistorialId ? " selected" : "");
+    const fallaDescTxt = v.descripcionFalla ? `<div class="eq-meta" style="margin-top:2px; text-transform:none; letter-spacing:0;">${v.descripcionFalla}</div>` : "";
+    card.innerHTML = `
+      <div class="eq-name">${v.equipo}</div>
+      <div class="eq-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}${v.tipoFalla ? `<span class="sep">&middot;</span>${v.tipoFalla}` : ""}</div>
+      ${fallaDescTxt}
+      <div class="eq-foot">
+        <span class="chip ${v.estado}">${v.estado === ESTADOS.ENTREGADO ? "Entregado" : "Cerrado por reingreso"}</span>
+        <div class="eq-datetime">${formatDateTime(v.ingresoAt)} &rarr; ${formatDateTime(fin)}<span class="elapsed">${horas.toFixed(1)}h</span></div>
+      </div>
+    `;
+    card.addEventListener("click", () => selectHistorial(v.id));
+    hListEl.appendChild(card);
+  });
+}
+
+function selectHistorial(id) {
+  selectedHistorialId = id;
+  const v = allEquipos.find(x => x.id === id);
+  if (!v) return;
+  abName.textContent = v.equipo + " (histórico)";
+  renderHistorialEditForm(v);
+  actionbar.classList.add("open");
+  renderHistorial();
+}
+
+function renderHistorialEditForm(v) {
+  const fechasHtml = `
+    <div class="field">
+      <label>Fecha y hora de ingreso</label>
+      <input type="datetime-local" id="hIngresoAt" value="${toDatetimeLocal(v.ingresoAt)}">
+    </div>
+    ${v.operativoAt != null ? `
+    <div class="field">
+      <label>Fecha y hora de "listo / operativo"</label>
+      <input type="datetime-local" id="hOperativoAt" value="${toDatetimeLocal(v.operativoAt)}">
+    </div>` : ""}
+    ${v.estado === ESTADOS.ENTREGADO ? `
+    <div class="field">
+      <label>Fecha y hora de entrega al operador</label>
+      <input type="datetime-local" id="hSalidaAt" value="${toDatetimeLocal(v.salidaAt)}">
+    </div>` : `
+    <div class="field">
+      <label>Fecha y hora del reingreso (cierre de este registro)</label>
+      <input type="datetime-local" id="hCierreAt" value="${toDatetimeLocal(v.cierreAt)}">
+    </div>`}
+  `;
+
+  abAction.innerHTML = `
+    <div class="edit-form">
+      <div class="field">
+        <label>Equipo</label>
+        <input type="text" id="hEquipo" value="${v.equipo}">
+      </div>
+      <div class="field">
+        <label>Empresa</label>
+        <input type="text" id="hEmpresa" list="empresas" value="${v.empresa}">
+      </div>
+      <div class="field">
+        <label>Ubicación</label>
+        <input type="text" id="hUbicacion" list="ubicaciones" value="${v.ubicacion}">
+      </div>
+      <div class="field">
+        <label>Tipo de falla</label>
+        <select id="hFalla"></select>
+      </div>
+      <div class="field">
+        <label>Descripción de la falla</label>
+        <input type="text" id="hFallaDesc" value="${v.descripcionFalla || ""}">
+      </div>
+      <div class="field">
+        <label>Horómetro (h)</label>
+        <input type="number" id="hHorometro" value="${v.horometro != null ? v.horometro : ""}" min="0" step="1" inputmode="numeric">
+      </div>
+      <div class="field checkbox-field">
+        <input type="checkbox" id="hCritico" ${v.prioridad === PRIORIDADES.CRITICO ? "checked" : ""}>
+        <label for="hCritico">Marcar equipo como crítico</label>
+      </div>
+      ${fechasHtml}
+      <div class="hint">Este registro ya está cerrado — corrige con cuidado, afecta reportes y estadísticas históricas.</div>
+    </div>
+    <div class="confirm-row">
+      <button class="btn cancel" id="hCancel">Cancelar</button>
+      <button class="btn confirm" id="hSave">Guardar cambios</button>
+    </div>
+  `;
+
+  const hFallaSelect = document.getElementById("hFalla");
+  TIPOS_FALLA.forEach(t => {
+    const opt = document.createElement("option");
+    opt.value = t; opt.textContent = t;
+    if (t === v.tipoFalla) opt.selected = true;
+    hFallaSelect.appendChild(opt);
+  });
+
+  document.getElementById("hCancel").addEventListener("click", () => closeActionbar());
+  document.getElementById("hSave").addEventListener("click", async () => {
+    const equipo = document.getElementById("hEquipo").value.trim();
+    const empresa = document.getElementById("hEmpresa").value.trim();
+    const ubicacion = document.getElementById("hUbicacion").value.trim();
+    const tipoFalla = hFallaSelect.value;
+    const descripcionFalla = document.getElementById("hFallaDesc").value.trim();
+    const horometroRaw = document.getElementById("hHorometro").value.trim();
+    const horometro = horometroRaw === "" ? null : Number(horometroRaw);
+    const critico = document.getElementById("hCritico").checked;
+    const ingresoAt = fromDatetimeLocal(document.getElementById("hIngresoAt").value) ?? v.ingresoAt;
+
+    if (!equipo || !empresa || !ubicacion) {
+      showToast("Completa equipo, empresa y ubicación", "var(--red)");
+      return;
+    }
+
+    const cambios = {
+      equipo, empresa, ubicacion, tipoFalla, descripcionFalla, horometro, ingresoAt,
+      prioridad: critico ? PRIORIDADES.CRITICO : null
+    };
+    const operativoInput = document.getElementById("hOperativoAt");
+    if (operativoInput) cambios.operativoAt = fromDatetimeLocal(operativoInput.value) ?? v.operativoAt;
+    const salidaInput = document.getElementById("hSalidaAt");
+    if (salidaInput) cambios.salidaAt = fromDatetimeLocal(salidaInput.value) ?? v.salidaAt;
+    const cierreInput = document.getElementById("hCierreAt");
+    if (cierreInput) cambios.cierreAt = fromDatetimeLocal(cierreInput.value) ?? v.cierreAt;
+
+    try {
+      await updateDoc(doc(db, COLLECTION, v.id), cambios);
+      showToast(`${equipo} (histórico) actualizado`);
+      closeActionbar();
+    } catch (e) {
+      showToast("Error al guardar: " + e.message, "var(--red)");
+    }
+  });
+}
+
 // live tick for elapsed times shown in the list
 setInterval(() => {
   document.querySelectorAll(".eq-datetime .elapsed[data-since]").forEach(el => {
@@ -1053,8 +1280,10 @@ onSnapshot(q, (snap) => {
   statusEl.classList.remove("off");
   statusText.textContent = "sincronizado";
   const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  allEquipos = all;
   activos = all.filter(v => v.estado === ESTADOS.REPARACION || v.estado === ESTADOS.STANDBY);
   renderList();
+  renderHistorial();
 }, (err) => {
   statusEl.classList.add("off");
   statusText.textContent = "sin conexión";
