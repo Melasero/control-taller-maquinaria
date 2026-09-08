@@ -71,12 +71,13 @@
     display:block; font-size:12px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;
     color: var(--text-dim); margin-bottom:8px;
   }
-  input[type=text], input[type=number], input[type=datetime-local], select{
+  input[type=text], input[type=number], input[type=datetime-local], select, textarea{
     width:100%; background: var(--card); border:1px solid var(--border); border-radius:10px;
     padding:14px 14px; color: var(--text); font-family:'IBM Plex Sans', sans-serif; font-size:16px;
     appearance:none;
   }
   input[type=datetime-local]{ color-scheme: dark; font-family:'IBM Plex Mono', monospace; font-size:15px; }
+  textarea{ font-family:'IBM Plex Mono', monospace; font-size:14px; line-height:1.5; resize:vertical; }
   .field .hint{ font-size:11.5px; color: var(--text-faint); margin-top:6px; }
   select{
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="%238fa0b3"><path d="M5 7l5 6 5-6z"/></svg>');
@@ -169,6 +170,25 @@
   .obs-eq-head span{ font-weight:400; font-size:11px; color: var(--text-faint); text-transform:uppercase; margin-left:6px; }
   .obs-item{ display:flex; align-items:flex-start; gap:9px; font-size:13.5px; line-height:1.45; margin-top:10px; color: var(--text); }
   .obs-item input{ width:19px; height:19px; margin-top:1px; flex-shrink:0; accent-color: var(--accent); }
+
+  .ot-item{
+    display:flex; gap:10px; align-items:flex-start; background: rgba(251,191,36,0.08);
+    border:1px solid rgba(251,191,36,0.3); border-left:3px solid var(--yellow);
+    border-radius:10px; padding:12px 14px; margin-bottom:10px; transition: background .25s ease, border-color .25s ease;
+  }
+  .ot-item input[type=checkbox]{ width:20px; height:20px; margin-top:2px; flex-shrink:0; accent-color: var(--green); }
+  .ot-item.done{ background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.35); border-left-color: var(--green); }
+  .ot-item.done .ot-eq{ color: var(--green); }
+  .ot-item.done .ot-desc{ text-decoration: line-through; }
+  .ot-main{ flex:1; min-width:0; }
+  .ot-head{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+  .ot-eq{ font-weight:700; font-size:14.5px; }
+  .ot-num{
+    font-family:'IBM Plex Mono', monospace; font-size:13px; font-weight:800; color: var(--accent);
+    background: var(--accent-dim); padding:2px 10px; border-radius:999px; white-space:nowrap;
+  }
+  .ot-desc{ margin-top:3px; font-size:13.5px; color: var(--text); line-height:1.4; }
+  .ot-meta{ margin-top:5px; font-size:11.5px; color: var(--text-faint); text-transform:uppercase; letter-spacing:0.03em; }
 
   .toast{
     position:fixed; top:16px; left:50%; transform:translateX(-50%) translateY(-20px);
@@ -285,8 +305,43 @@
       <label for="fPlanValor">Avance del plan semanal (%)</label>
       <input type="number" id="fPlanValor" min="0" max="100" step="1" value="0">
     </div>
-    <button class="btn primary" id="btnPlan">Guardar avance</button>
+    <div class="field">
+      <label for="fFlotaVolquetes">Lista de volquetes de la flota (un código por línea)</label>
+      <textarea id="fFlotaVolquetes" rows="8" placeholder="CV-00367&#10;CV-00369&#10;CA-00017&#10;..."></textarea>
+      <div class="hint" id="flotaCount">0 volquetes en la lista</div>
+      <div class="hint">La TV usa esta lista para el contador circular: cuenta como "en mantenimiento" cualquiera de estos códigos que esté ahora en la columna "En mantenimiento", y el resto los muestra como operativos. Actualízala aquí cuando se dé de alta o de baja un volquete.</div>
+    </div>
+    <button class="btn primary" id="btnPlan">Guardar</button>
     <div class="hint" id="planUltima" style="margin-top:14px; text-align:center;"></div>
+
+    <div class="m-divider">OT del plan — Semana <span id="otSemActual">—</span></div>
+    <div class="hint">Si cargas OT para esta semana, el % de avance de arriba se calcula solo (OT completadas ÷ total) y reemplaza el número manual. Sin OT cargadas esta semana, se usa el % manual de siempre.</div>
+
+    <div class="field" style="margin-top:14px;">
+      <label for="otEquipo">Equipo</label>
+      <input type="text" id="otEquipo" placeholder="Ej. CV-00451" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="otDescripcion">Descripción</label>
+      <input type="text" id="otDescripcion" placeholder="Ej. PM3 12000 Mantto Preventivo" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="otNumero">N° de OT</label>
+      <input type="text" id="otNumero" placeholder="Ej. 70691506" inputmode="numeric" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="otFecha">Fecha programada</label>
+      <input type="date" id="otFecha">
+    </div>
+    <div class="field">
+      <label for="otEjecucion">Ejecución</label>
+      <input type="text" id="otEjecucion" list="empresas" placeholder="Ej. MD, ST, OR, Komatsu…" autocomplete="off">
+    </div>
+    <button class="btn primary" id="btnOt">Agregar OT a la semana</button>
+
+    <div class="m-divider">OT de esta semana — toca el check al completarla</div>
+    <div id="otList"></div>
+    <div class="empty" id="otEmpty" hidden>Sin OT cargadas para esta semana.</div>
   </section>
 </main>
 
@@ -309,9 +364,9 @@ import {
   collection, addDoc, doc, updateDoc, setDoc, deleteDoc, onSnapshot, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import {
-  COLLECTION, ESTADOS, PRIORIDADES, PLAN_COLLECTION, PLAN_DOC, OBS_COLLECTION,
+  COLLECTION, ESTADOS, PRIORIDADES, PLAN_COLLECTION, PLAN_DOC, OBS_COLLECTION, OT_PLAN_COLLECTION,
   TIPOS_FALLA, UBICACIONES_SUGERIDAS, EMPRESAS_SUGERIDAS, formatHMS, formatDateTime,
-  toDatetimeLocal, fromDatetimeLocal
+  toDatetimeLocal, fromDatetimeLocal, isoWeekInfo
 } from "./shared.js";
 
 const statusEl = document.getElementById("status");
@@ -496,11 +551,30 @@ onSnapshot(qObs, (snap) => {
 // ---------- plan semanal (independiente de los equipos) ----------
 const planRef = doc(db, PLAN_COLLECTION, PLAN_DOC);
 const fPlanValor = document.getElementById("fPlanValor");
+const fFlotaVolquetes = document.getElementById("fFlotaVolquetes");
+const flotaCountEl = document.getElementById("flotaCount");
 const planUltimaEl = document.getElementById("planUltima");
+
+function parseFlotaTextarea() {
+  return fFlotaVolquetes.value
+    .split(/\r?\n/)
+    .map((s) => s.trim().toUpperCase())
+    .filter(Boolean);
+}
+function updateFlotaCount() {
+  const n = new Set(parseFlotaTextarea()).size;
+  flotaCountEl.textContent = `${n} volquete${n === 1 ? "" : "s"} en la lista`;
+}
+fFlotaVolquetes.addEventListener("input", updateFlotaCount);
+
 onSnapshot(planRef, (snap) => {
   const data = snap.data();
   if (data && typeof data.avance === "number") {
     fPlanValor.value = data.avance;
+  }
+  if (data && Array.isArray(data.flotaVolquetes) && document.activeElement !== fFlotaVolquetes) {
+    fFlotaVolquetes.value = data.flotaVolquetes.join("\n");
+    updateFlotaCount();
   }
   if (data && data.actualizadoAt) {
     planUltimaEl.textContent = `Última actualización: ${formatDateTime(data.actualizadoAt)}`;
@@ -508,13 +582,110 @@ onSnapshot(planRef, (snap) => {
 }, (err) => console.error(err));
 
 document.getElementById("btnPlan").addEventListener("click", async () => {
-  const raw = fPlanValor.value;
-  const avance = Math.max(0, Math.min(100, Number(raw) || 0));
+  const avance = Math.max(0, Math.min(100, Number(fPlanValor.value) || 0));
+  const flotaVolquetes = Array.from(new Set(parseFlotaTextarea()));
   try {
-    await setDoc(planRef, { avance, actualizadoAt: Date.now() }, { merge: true });
-    showToast(`Avance del plan semanal guardado: ${avance}%`);
+    await setDoc(
+      planRef,
+      { avance, flotaVolquetes, totalVolquetes: flotaVolquetes.length, actualizadoAt: Date.now() },
+      { merge: true }
+    );
+    showToast(`Guardado: ${avance}% de avance · ${flotaVolquetes.length} volquetes en flota`);
   } catch (e) {
     showToast("Error al guardar: " + e.message, "var(--red)");
+  }
+});
+
+// ---------- OT del plan semanal (independiente de los equipos) ----------
+const otSemActualEl = document.getElementById("otSemActual");
+const otListEl = document.getElementById("otList");
+const otEmptyEl = document.getElementById("otEmpty");
+const otEquipoEl = document.getElementById("otEquipo");
+const otDescripcionEl = document.getElementById("otDescripcion");
+const otNumeroEl = document.getElementById("otNumero");
+const otFechaEl = document.getElementById("otFecha");
+const otEjecucionEl = document.getElementById("otEjecucion");
+
+const { week: semActual, year: anioActual } = isoWeekInfo(Date.now());
+otSemActualEl.textContent = semActual;
+{
+  const hoy = new Date();
+  otFechaEl.value = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
+}
+
+function formatFechaCorta(ms) {
+  if (!ms) return "—";
+  return new Date(ms).toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+let otList = [];
+function renderOtList() {
+  const items = otList
+    .filter((o) => {
+      if (!o.fechaProgramada) return false;
+      const w = isoWeekInfo(o.fechaProgramada);
+      return w.week === semActual && w.year === anioActual;
+    })
+    .sort((a, b) => (a.completada === b.completada ? a.fechaProgramada - b.fechaProgramada : (a.completada ? 1 : -1)));
+
+  otListEl.innerHTML = "";
+  otEmptyEl.hidden = items.length > 0;
+
+  items.forEach((o) => {
+    const row = document.createElement("label");
+    row.className = "ot-item" + (o.completada ? " done" : "");
+    row.innerHTML = `
+      <input type="checkbox" ${o.completada ? "checked" : ""} data-ot-id="${o.id}">
+      <div class="ot-main">
+        <div class="ot-head"><span class="ot-eq">${o.equipo}</span><span class="ot-num">OT ${o.ot || "—"}</span></div>
+        <div class="ot-desc">${o.descripcion || "—"}</div>
+        <div class="ot-meta">${formatFechaCorta(o.fechaProgramada)}${o.ejecucion ? " · " + o.ejecucion : ""}</div>
+      </div>
+    `;
+    row.querySelector("input").addEventListener("change", async (e) => {
+      const checked = e.target.checked;
+      try {
+        await updateDoc(doc(db, OT_PLAN_COLLECTION, o.id), {
+          completada: checked,
+          completadaAt: checked ? Date.now() : null
+        });
+      } catch (err) {
+        showToast("Error al actualizar: " + err.message, "var(--red)");
+        e.target.checked = !checked;
+      }
+    });
+    otListEl.appendChild(row);
+  });
+}
+
+onSnapshot(collection(db, OT_PLAN_COLLECTION), (snap) => {
+  otList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  renderOtList();
+}, (err) => console.error(err));
+
+document.getElementById("btnOt").addEventListener("click", async () => {
+  const equipo = otEquipoEl.value.trim();
+  const descripcion = otDescripcionEl.value.trim();
+  const ot = otNumeroEl.value.trim();
+  const fechaProgramada = otFechaEl.value ? new Date(otFechaEl.value + "T00:00:00").getTime() : null;
+  const ejecucion = otEjecucionEl.value.trim();
+
+  if (!equipo || !fechaProgramada) {
+    showToast("Completa al menos equipo y fecha programada", "var(--red)");
+    return;
+  }
+  try {
+    await addDoc(collection(db, OT_PLAN_COLLECTION), {
+      equipo, descripcion, ot, fechaProgramada, ejecucion,
+      completada: false, completadaAt: null, createdAt: Date.now()
+    });
+    showToast(`OT agregada para ${equipo}`);
+    otEquipoEl.value = "";
+    otDescripcionEl.value = "";
+    otNumeroEl.value = "";
+    otEjecucionEl.value = "";
+  } catch (e) {
+    showToast("Error al guardar la OT: " + e.message, "var(--red)");
   }
 });
 

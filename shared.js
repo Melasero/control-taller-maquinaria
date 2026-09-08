@@ -26,6 +26,12 @@ export const PRIORIDADES = {
 export const PLAN_COLLECTION = "config";
 export const PLAN_DOC = "planSemanal";
 
+// Órdenes de Trabajo (OT) del plan semanal — se cargan semana a semana desde
+// la pestaña "Plan" del celular (equipo, descripción, N° de OT, fecha programada,
+// ejecución) y se marcan como completadas ahí o directo desde la TV al tocar el
+// widget de "Avance del Plan Semanal". Independiente de la colección "equipos".
+export const OT_PLAN_COLLECTION = "otsPlan";
+
 export const STANDBY_ALERT_MS = 2 * 60 * 60 * 1000; // 2 horas
 
 export const TIPOS_FALLA = ["Mecánica", "Eléctrica", "Hidráulica", "Soldadura", "Llantería", "Mantenimiento Preventivo", "Otro"];
@@ -84,4 +90,16 @@ export function formatTime(ms) {
   if (!ms) return "—";
   const d = new Date(ms);
   return d.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
+}
+
+// Semana y año ISO-8601 (lunes a domingo; la semana 1 es la que contiene el
+// primer jueves del año). Se usa para agrupar las OT del plan semanal por
+// semana sin depender de que alguien escriba el número de semana a mano.
+export function isoWeekInfo(ms) {
+  const d = new Date(ms);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  const week = 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+  return { week, year: d.getFullYear() };
 }

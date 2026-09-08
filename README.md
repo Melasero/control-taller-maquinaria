@@ -32,6 +32,9 @@ service cloud.firestore {
     match /observaciones/{doc} {
       allow read, write: if true;
     }
+    match /otsPlan/{doc} {
+      allow read, write: if true;
+    }
   }
 }
 ```
@@ -91,12 +94,29 @@ Ambos incluyen: Equipo, Empresa, Ubicación, Tipo de Falla, Fecha Ingreso, Fecha
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| `avance` | number | % de cumplimiento del plan semanal del taller (0–100) |
+| `avance` | number | % manual de cumplimiento del plan semanal (0–100). Se usa solo si no hay OT cargadas en `otsPlan` para la semana ISO en curso — ver más abajo |
+| `flotaVolquetes` | string[] | Códigos exactos de los volquetes activos de la flota (prefijos CV/CA/CL/CT), uno por elemento. Se usa para el anillo "Volquetes Operativos" de la TV: operativos = `flotaVolquetes.length` menos los que están en la columna "En mantenimiento" |
+| `totalVolquetes` | number | `flotaVolquetes.length`, guardado como referencia (no se usa para calcular, solo informativo) |
 | `actualizadoAt` | number (ms) | Última vez que se guardó desde el celular |
 
-Es un dato independiente de los equipos — no pertenece a ningún documento de `equipos`, se lee y escribe directo desde la pestaña "Plan Semanal" del celular y se muestra en la tercera tarjeta de métricas de la TV.
+Es un dato independiente de los equipos — no pertenece a ningún documento de `equipos`, se lee y escribe directo desde la pestaña "Plan" del celular y se muestra en la tercera tarjeta de métricas de la TV.
 
-El sub-texto "X/Y OT cerradas hoy" y la flecha de tendencia que aparecen junto al % se calculan solos en `tv.html` a partir de las órdenes de trabajo (documentos de `equipos`) abiertas en la jornada actual — no son parte de este documento y no se editan a mano.
+El sub-texto "X/Y OT cerradas hoy" y la flecha de tendencia que aparecen junto al % se calculan solos en `tv.html` a partir de los ingresos a taller (documentos de `equipos`) abiertos en la jornada actual — no son parte de este documento y no se editan a mano. (Este "OT cerradas hoy" es un conteo automático de ingresos del día, distinto de las OT del plan semanal descritas abajo.)
+
+## OT del plan semanal (colección `otsPlan`)
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `equipo` | string | Código del equipo al que corresponde la OT |
+| `descripcion` | string | Detalle del trabajo, ej. "PM3 12000 Mantto Preventivo" |
+| `ot` | string | Número de orden de trabajo |
+| `fechaProgramada` | number (ms) | Fecha programada de la OT — de aquí se calcula a qué semana ISO-8601 (lunes a domingo) pertenece, no hace falta escribir el número de semana a mano |
+| `ejecucion` | string | Quién la ejecuta (ej. MD, ST, OR) |
+| `completada` | boolean | Se marca tocando la OT, desde el celular o desde la TV |
+| `completadaAt` | number \| null | Momento en que se marcó completada |
+| `createdAt` | number (ms) | Momento en que se cargó la OT |
+
+Se cargan semana a semana desde la pestaña "Plan" del celular. Si existe al menos una OT cuya `fechaProgramada` cae en la semana ISO actual, el % del widget "Avance del Plan Semanal" de la TV se calcula solo (`completadas / total`) y reemplaza al `avance` manual; se puede marcar cada OT como completada tocándola tanto en el celular como en el modal que abre el widget en la TV, y ambos quedan sincronizados en tiempo real.
 
 ## Observaciones (colección `observaciones`)
 

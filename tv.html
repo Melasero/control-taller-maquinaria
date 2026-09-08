@@ -6,6 +6,7 @@
 <title>Taller de Mantenimiento Stracon Punto F</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap">
+<script src="vendor/xlsx.full.min.js"></script>
 <style>
   :root{
     --bg: #0a0e13;
@@ -71,7 +72,7 @@
   }
 
   /* ---- métricas (incluye tendencia del Plan Semanal) ---- */
-  .metrics-row{ display:grid; grid-template-columns:1fr 1fr 1.3fr; gap:12px; padding:12px 44px 0; flex-shrink:0; }
+  .metrics-row{ display:grid; grid-template-columns:1fr 1fr 1.2fr 1fr; gap:12px; padding:12px 44px 0; flex-shrink:0; }
   .metric-card{
     background: var(--panel-2); border:1px solid var(--border); border-radius:12px; padding:10px 18px;
     display:flex; align-items:center; gap:12px;
@@ -95,11 +96,44 @@
   }
   .plan-trend.up{ background: rgba(52,211,153,0.16); color: var(--green); }
   .plan-trend.down{ background: rgba(242,73,92,0.16); color: var(--red); }
+  .plan-row1-right{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  .sem-selector{
+    display:flex; align-items:center; gap:1px; background: var(--panel); border:1px solid var(--border);
+    border-radius:999px; padding:2px 3px; flex-shrink:0;
+  }
+  .sem-arrow{
+    background:none; border:none; color: var(--text-dim); font-size:16px; width:21px; height:21px; line-height:1;
+    cursor:pointer; border-radius:50%; display:flex; align-items:center; justify-content:center; padding:0;
+  }
+  .sem-arrow:hover{ background: var(--accent-dim); color: var(--accent); }
+  .sem-input{
+    width:32px; background:transparent; border:none; color: var(--accent); font-family:'IBM Plex Mono', monospace;
+    font-size:15px; font-weight:800; text-align:center; padding:2px 0;
+  }
+  .sem-input::-webkit-inner-spin-button, .sem-input::-webkit-outer-spin-button{ -webkit-appearance:none; margin:0; }
+  .sem-input:focus{ outline:none; }
+  .ot-upload-btn{
+    display:block; margin:7px 0 0 auto; background:none; border:none; padding:0;
+    font-size:9px; color: var(--text-faint); text-transform:uppercase; letter-spacing:0.04em;
+    cursor:pointer; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:2px;
+  }
+  .ot-upload-btn:hover{ color: var(--accent); }
+  .ot-upload-btn.error{ color: var(--red); }
+  .ot-upload-btn:disabled{ cursor:default; opacity:0.7; }
   .metric-card.plan .plan-top{ display:flex; align-items:baseline; gap:8px; }
   .metric-card.plan .m-num{ color: var(--accent); font-size:24px; }
   .plan-sub{ font-size:10px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
   .metric-bar{ height:5px; border-radius:999px; background: var(--panel); overflow:hidden; }
   .metric-bar-fill{ height:100%; border-radius:999px; background: var(--accent); transition: width .4s ease; }
+
+  .volq-card{ cursor:pointer; transition: border-color .15s ease; }
+  .volq-card:hover{ border-color: var(--text-faint); }
+  .volq-gauge-wrap{ position:relative; width:50px; height:50px; flex-shrink:0; }
+  .volq-gauge-wrap svg{ width:100%; height:100%; transform:rotate(-90deg); }
+  .volq-track{ fill:none; stroke: var(--panel); stroke-width:6; }
+  .volq-fill{ fill:none; stroke:#4ade80; stroke-width:6; stroke-linecap:round; transition: stroke-dashoffset .5s ease; }
+  .volq-gauge-label{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+  .volq-num{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:11px; color: var(--text); font-variant-numeric: tabular-nums; }
 
   /* ---- tablero: Mantenimiento / Observaciones / Standby ---- */
   .board{
@@ -142,8 +176,21 @@
   .card{
     position:relative; cursor:pointer;
     background: var(--card); border:1px solid var(--border); border-radius:11px; padding:8px 12px;
-    transition: transform .35s cubic-bezier(.2,.8,.2,1), opacity .35s ease, box-shadow .3s ease, background .3s ease, border-color .15s ease;
+    transition: transform .35s cubic-bezier(.2,.8,.2,1), opacity .35s ease, box-shadow .3s ease, background .3s ease,
+      border-color .15s ease, padding .3s ease;
   }
+
+  /* cuando hay pocos equipos en la lista, las tarjetas crecen para aprovechar el espacio libre */
+  #listFalla.roomy .card, #listStandby.roomy .card, #listObs.roomy .card{ padding:16px 20px; }
+  #listFalla.roomy .eq-name, #listStandby.roomy .eq-name, #listObs.roomy .eq-name{ font-size:19px; }
+  #listFalla.roomy .head-timer, #listStandby.roomy .head-timer{ font-size:20px; }
+  #listFalla.roomy .head-date, #listStandby.roomy .head-date, #listObs.roomy .head-date{ font-size:11.5px; }
+  #listFalla.roomy .falla-desc{ font-size:14px; -webkit-line-clamp:2; margin-top:7px; }
+  #listFalla.roomy .meta-tag, #listStandby.roomy .meta-tag{ font-size:11px; padding:3px 9px; }
+  #listFalla.roomy .mini-meta, #listStandby.roomy .mini-meta{ margin-top:7px; }
+  #listObs.roomy .obs-list{ margin-top:9px; gap:8px; }
+  #listObs.roomy .obs-item{ font-size:14.5px; }
+  #listObs.roomy .hm-tag{ font-size:12px; }
   .card:hover{ border-color: var(--text-faint); }
   .card:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
   .card.red{ border-left:3px solid var(--red-line); }
@@ -274,8 +321,55 @@
   .hist-item:last-child{ border-bottom:none; padding-bottom:0; }
   .hist-item-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
   .hist-date{ font-family:'IBM Plex Mono', monospace; font-size:11px; color: var(--text-faint); white-space:nowrap; }
+  .hist-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
   .hist-tipo{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; color: var(--text-dim); }
+  .hist-dur{ font-family:'IBM Plex Mono', monospace; font-size:11px; font-weight:700; color: var(--text); white-space:nowrap; font-variant-numeric: tabular-nums; }
   .hist-desc{ margin-top:4px; font-size:13px; line-height:1.4; color: var(--text); }
+
+  .flota-list{ margin-top:10px; display:flex; flex-direction:column; gap:0; max-height:440px; overflow-y:auto; padding-right:4px; }
+  .flota-row{ padding:9px 4px; border-bottom:1px solid var(--border); cursor:pointer; border-radius:6px; transition: background .15s ease; }
+  .flota-row:hover{ background: var(--panel); }
+  .flota-row:last-child{ border-bottom:none; }
+  .flota-row-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .flota-code{ display:flex; align-items:center; gap:6px; font-weight:700; font-size:13.5px; }
+  .flota-code .eq-icon{ width:14px; height:14px; color: var(--text-faint); }
+  .flota-status{ font-size:10px; font-weight:800; letter-spacing:0.03em; text-transform:uppercase; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+  .flota-status.red{ background: var(--red-dim); color: var(--red); }
+  .flota-status.green{ background: var(--green-dim); color: var(--green); }
+  .flota-detail{ margin-top:4px; font-size:12.5px; color: var(--text-dim); line-height:1.4; }
+  .flota-chips{ margin-top:10px; display:flex; flex-wrap:wrap; gap:6px; max-height:160px; overflow-y:auto; padding-right:4px; }
+  .flota-chip{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px;
+    background: var(--green-dim); color: var(--green); white-space:nowrap;
+  }
+
+  .ot-row-list{ display:flex; flex-direction:column; gap:8px; max-height:340px; overflow-y:auto; padding-right:4px; }
+  .ot-row{
+    display:flex; gap:10px; align-items:flex-start; cursor:pointer; padding:10px 12px;
+    background: rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.3); border-left:3px solid var(--yellow);
+    border-radius:10px; transition: background .25s ease, border-color .25s ease;
+  }
+  .ot-row:hover{ border-color: var(--yellow-bright); }
+  .ot-row.done{ background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.35); border-left-color: var(--green); }
+  .ot-row.done:hover{ border-color: var(--green); }
+  .ot-row.done .ot-row-desc{ text-decoration: line-through; color: var(--text-dim); }
+  .ot-row.done .ot-row-eq{ color: var(--green); }
+  .ot-row-check{
+    width:20px; height:20px; flex-shrink:0; border-radius:6px; border:2px solid var(--yellow-line);
+    display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; color: transparent;
+    margin-top:1px; transition: background .25s ease, border-color .25s ease;
+  }
+  .ot-row.done .ot-row-check{ background: var(--green); border-color: var(--green); color:#06210f; }
+  .ot-row-main{ flex:1; min-width:0; }
+  .ot-row-head{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+  .ot-row-eq{ display:flex; align-items:center; gap:6px; font-weight:700; font-size:14px; }
+  .ot-row-eq .eq-icon{ width:13px; height:13px; color: var(--text-faint); }
+  .ot-row-num{
+    font-family:'IBM Plex Mono', monospace; font-size:13px; font-weight:800; color: var(--accent);
+    background: var(--accent-dim); padding:2px 10px; border-radius:999px; white-space:nowrap;
+  }
+  .ot-row-desc{ margin-top:3px; font-size:13px; color: var(--text); line-height:1.4; }
+  .ot-row-meta{ margin-top:4px; font-size:11px; color: var(--text-faint); text-transform:uppercase; letter-spacing:0.03em; }
   .modal-close:hover{ color: var(--text); }
 </style>
 </head>
@@ -296,24 +390,43 @@
 <div class="credit-fixed">Diseño · Vins Rivera</div>
 
 <div class="metrics-row">
-  <div class="metric-card red">
+  <div class="metric-card red volq-card" id="fallaResumenCard" title="Ver el detalle por tipo de equipo">
     <span class="m-ind"></span>
     <div><div class="m-num" id="metricFalla">0</div><div class="m-label">Equipos en Mantenimiento</div></div>
   </div>
-  <div class="metric-card green">
+  <div class="metric-card green volq-card" id="standbyResumenCard" title="Ver los equipos entregados en este turno">
     <span class="m-ind"></span>
     <div><div class="m-num" id="metricStandby">0</div><div class="m-label">Equipos en Standby</div></div>
   </div>
-  <div class="metric-card plan">
+  <div class="metric-card plan volq-card" id="planCard" title="Ver las OT de esta semana">
     <div class="plan-row1">
-      <span class="plan-title-mini">Avance del Plan Semanal</span>
-      <span class="plan-trend" id="planTrend" hidden></span>
+      <span class="plan-title-mini">Avance del Plan Semana</span>
+      <div class="plan-row1-right">
+        <span class="plan-trend" id="planTrend" hidden></span>
+        <div class="sem-selector" id="semSelector" title="Cambiar de semana">
+          <button type="button" class="sem-arrow" id="semPrev" aria-label="Semana anterior">&#8249;</button>
+          <input type="number" class="sem-input" id="semInput" min="1" max="53" value="1">
+          <button type="button" class="sem-arrow" id="semNext" aria-label="Semana siguiente">&#8250;</button>
+        </div>
+      </div>
     </div>
     <div class="plan-top">
       <div class="m-num" id="metricPlan">0%</div>
       <div class="plan-sub" id="planSub">—</div>
     </div>
     <div class="metric-bar"><div class="metric-bar-fill" id="metricPlanBar" style="width:0%;"></div></div>
+    <button type="button" class="ot-upload-btn" id="otUploadBtn">Cargar Excel de OTs</button>
+    <input type="file" id="otUploadInput" accept=".xlsx,.xls" hidden>
+  </div>
+  <div class="metric-card volq-card" id="volqCard" title="Ver el detalle de la flota de volquetes">
+    <div class="volq-gauge-wrap">
+      <svg viewBox="0 0 50 50">
+        <circle class="volq-track" cx="25" cy="25" r="20"></circle>
+        <circle class="volq-fill" id="volqGaugeFill" cx="25" cy="25" r="20" stroke-dasharray="125.66" stroke-dashoffset="125.66"></circle>
+      </svg>
+      <div class="volq-gauge-label"><div class="volq-num" id="volqNum">0/0</div></div>
+    </div>
+    <div><div class="m-label">Volquetes Operativos</div><div class="plan-sub" id="volqSub">—</div></div>
   </div>
 </div>
 
@@ -352,11 +465,11 @@
 <script type="module">
 import { db } from "./firebase-init.js";
 import {
-  collection, doc, onSnapshot, query, orderBy
+  collection, doc, onSnapshot, query, orderBy, updateDoc, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import {
-  ESTADOS, PRIORIDADES, STANDBY_ALERT_MS, PLAN_COLLECTION, PLAN_DOC, OBS_COLLECTION,
-  formatHMS, formatHM, formatTime, formatDateTime
+  ESTADOS, PRIORIDADES, STANDBY_ALERT_MS, PLAN_COLLECTION, PLAN_DOC, OBS_COLLECTION, OT_PLAN_COLLECTION,
+  formatHMS, formatHM, formatTime, formatDateTime, isoWeekInfo
 } from "./shared.js";
 
 const DIAS = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
@@ -380,13 +493,27 @@ const countFallaEl = document.getElementById("countFalla");
 const countStandbyEl = document.getElementById("countStandby");
 const countObsEl = document.getElementById("countObs");
 const metricFallaEl = document.getElementById("metricFalla");
-let fallaSortAlpha = false;
+const FALLA_SORT_MODES = ["reciente", "alpha", "parada"];
+const FALLA_SORT_LABELS = { reciente: "Recientes", alpha: "A-Z", parada: "Parada &#8595;" };
+const FALLA_SORT_TITLES = {
+  reciente: "Orden actual: más reciente primero. Toca para ordenar A-Z.",
+  alpha: "Orden actual: alfabético (A-Z). Toca para ordenar por tiempo de parada.",
+  parada: "Orden actual: mayor tiempo de parada primero. Toca para volver a recientes."
+};
+let fallaSortMode = "reciente";
 const fallaSortToggleEl = document.getElementById("fallaSortToggle");
+function updateFallaSortToggleUI(){
+  fallaSortToggleEl.innerHTML = FALLA_SORT_LABELS[fallaSortMode];
+  fallaSortToggleEl.title = FALLA_SORT_TITLES[fallaSortMode];
+  fallaSortToggleEl.classList.toggle("active", fallaSortMode !== "reciente");
+}
 fallaSortToggleEl.addEventListener("click", () => {
-  fallaSortAlpha = !fallaSortAlpha;
-  fallaSortToggleEl.classList.toggle("active", fallaSortAlpha);
+  const idx = FALLA_SORT_MODES.indexOf(fallaSortMode);
+  fallaSortMode = FALLA_SORT_MODES[(idx + 1) % FALLA_SORT_MODES.length];
+  updateFallaSortToggleUI();
   render();
 });
+updateFallaSortToggleUI();
 const metricStandbyEl = document.getElementById("metricStandby");
 
 const nodeMap = {};
@@ -430,20 +557,37 @@ function miniMeta(empresa, ubicacion){
   return `<div class="mini-meta">${companyTag(empresa)}${locationTag(ubicacion)}</div>`;
 }
 
-// ---------- ícono de tipo de máquina (por prefijo del código de equipo: CV / EX / RO / CA-MC) ----------
+// ---------- tipo de máquina por prefijo del código de equipo ----------
+function prefijoDe(equipo){
+  const m = /^([A-Za-z]+)/.exec((equipo || "").trim());
+  return m ? m[1].toUpperCase() : "";
+}
+const TIPO_EQUIPO = {
+  CV: { singular: "Volquete", plural: "Volquetes" },
+  CA: { singular: "Cisterna de Agua", plural: "Cisternas de Agua" },
+  CT: { singular: "Camión Tracto", plural: "Camiones Tracto" },
+  CL: { singular: "Camión Lubricador", plural: "Camiones Lubricador" },
+  EX: { singular: "Excavadora", plural: "Excavadoras" },
+  RO: { singular: "Rodillo", plural: "Rodillos" },
+  MC: { singular: "Montacargas", plural: "Montacargas" }
+};
+const TIPO_EQUIPO_OTROS = { singular: "Otro", plural: "Otros" };
+function tipoEquipoDe(equipo){
+  return TIPO_EQUIPO[prefijoDe(equipo)] || TIPO_EQUIPO_OTROS;
+}
+
 const ICON_CAMION = '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14v10"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>';
 const ICON_EXCAVADORA = '<rect x="2" y="16" width="8" height="4" rx="1"/><rect x="4" y="10" width="6" height="6" rx="1"/><path d="M9 12l7-4"/><path d="M16 8l3 5"/><path d="M19 13l2 1-1 2-2-1z"/>';
 const ICON_RODILLO = '<circle cx="7" cy="17" r="5"/><rect x="11" y="10" width="8" height="6" rx="1"/><circle cx="18" cy="18" r="3"/>';
 const ICON_CARGADOR = '<path d="M3 21V9"/><path d="M3 9h3"/><rect x="3" y="15" width="4" height="4"/><path d="M7 19h6l3-3"/><rect x="13" y="14" width="6" height="5" rx="1"/><circle cx="9" cy="21" r="1.5"/><circle cx="17" cy="21" r="1.5"/>';
 const ICON_MAQUINA_DEFAULT = '<rect x="3" y="8" width="18" height="10" rx="2"/><circle cx="8" cy="18" r="2"/><circle cx="16" cy="18" r="2"/>';
 function equipoIcon(equipo){
-  const m = /^([A-Za-z]+)/.exec((equipo || "").trim());
-  const code = m ? m[1].toUpperCase() : "";
+  const code = prefijoDe(equipo);
   let path;
-  if(code === "CV") path = ICON_CAMION;
+  if(code === "CV" || code === "CA" || code === "CT" || code === "CL") path = ICON_CAMION;
   else if(code === "EX") path = ICON_EXCAVADORA;
   else if(code === "RO") path = ICON_RODILLO;
-  else if(code === "CA" || code === "MC") path = ICON_CARGADOR;
+  else if(code === "MC") path = ICON_CARGADOR;
   else path = ICON_MAQUINA_DEFAULT;
   return `<svg class="eq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
 }
@@ -467,15 +611,22 @@ function historialMes(equipo, excludeId){
 function historialHtml(equipo, excludeId){
   const items = historialMes(equipo, excludeId);
   if(items.length === 0) return "";
-  const rows = items.map(h => `
+  const rows = items.map(h => {
+    const fin = h.salidaAt || h.cierreAt || h.ingresoAt;
+    const dur = Math.max(0, fin - h.ingresoAt);
+    return `
     <div class="hist-item">
       <div class="hist-item-head">
         <span class="hist-date">${formatDateTime(h.ingresoAt)}</span>
-        ${h.tipoFalla ? `<span class="hist-tipo">${h.tipoFalla}</span>` : ""}
+        <span class="hist-right">
+          ${h.tipoFalla ? `<span class="hist-tipo">${h.tipoFalla}</span>` : ""}
+          <span class="hist-dur">${formatHM(dur)}</span>
+        </span>
       </div>
       ${h.descripcionFalla ? `<div class="hist-desc">${h.descripcionFalla}</div>` : ""}
     </div>
-  `).join("");
+  `;
+  }).join("");
   return `
     <div class="modal-desc" style="margin-top:16px;">
       <span class="cap">Fallas anteriores este mes (${items.length})</span>
@@ -576,6 +727,7 @@ function buildObsCard(g){
 const modalBackdrop = document.getElementById("modalBackdrop");
 const modalBox = document.getElementById("modalBox");
 function openModal(v, color, stateLabel){
+  planModalOpen = false;
   const horometroTxt = v.horometro != null ? `${v.horometro} h` : "—";
   const descHtml = v.descripcionFalla
     ? `<div class="modal-desc"><span class="cap">Detalle de la falla</span>${v.descripcionFalla}</div>`
@@ -602,6 +754,7 @@ function openModal(v, color, stateLabel){
   modalBackdrop.classList.add("open");
 }
 function openObsModal(g){
+  planModalOpen = false;
   const itemsHtml = g.notas.map(n => `<div class="obs-item"><span class="bullet">&#9679;</span><span>${n.texto}</span></div>`).join("");
   modalBox.innerHTML = `
     <div class="modal-head">
@@ -613,7 +766,7 @@ function openObsModal(g){
   `;
   modalBackdrop.classList.add("open");
 }
-function closeModal(){ modalBackdrop.classList.remove("open"); }
+function closeModal(){ modalBackdrop.classList.remove("open"); planModalOpen = false; }
 modalBackdrop.addEventListener("click", (e) => { if(e.target === modalBackdrop) closeModal(); });
 document.addEventListener("keydown", (e) => { if(e.key === "Escape") closeModal(); });
 
@@ -672,18 +825,208 @@ function jornadaStart(ms){
   return d.getTime();
 }
 
+// ---------- contador circular de volquetes operativos (lista real de la flota) ----------
+let flotaVolquetes = []; // códigos exactos de los 57 volquetes activos (desde el Excel del parque de equipos)
+const volqGaugeFillEl = document.getElementById("volqGaugeFill");
+const volqNumEl = document.getElementById("volqNum");
+const volqSubEl = document.getElementById("volqSub");
+const volqCardEl = document.getElementById("volqCard");
+const VOLQ_GAUGE_CIRC = 2 * Math.PI * 20;
+
+function fallaActualDe(code){
+  return fleet.find(v => v.estado === ESTADOS.REPARACION && (v.equipo || "").trim().toUpperCase() === code) || null;
+}
+function volquetesEnMantenimiento(){
+  return flotaVolquetes.filter(code => fallaActualDe(code)).length;
+}
+function renderVolquetesGauge(){
+  const total = flotaVolquetes.length;
+  const enMtto = volquetesEnMantenimiento();
+  const operativos = Math.max(0, total - enMtto);
+  const pct = total > 0 ? Math.min(1, operativos / total) : 0;
+  volqGaugeFillEl.style.strokeDashoffset = VOLQ_GAUGE_CIRC * (1 - pct);
+  volqNumEl.textContent = `${operativos}/${total}`;
+  volqSubEl.textContent = enMtto > 0 ? `${enMtto} volquete${enMtto === 1 ? "" : "s"} en mantenimiento` : "Todos operativos";
+}
+
+function openFlotaModal(){
+  planModalOpen = false;
+  const total = flotaVolquetes.length;
+  const mtto = [];
+  const operativos = [];
+  flotaVolquetes.forEach(code => {
+    const v = fallaActualDe(code);
+    if(v) mtto.push(v); else operativos.push(code);
+  });
+  mtto.sort((a,b) => a.equipo.localeCompare(b.equipo, "es"));
+  operativos.sort((a,b) => a.localeCompare(b, "es"));
+
+  const mttoRows = mtto.map(v => `
+    <div class="flota-row" data-id="${v.id}">
+      <div class="flota-row-head">
+        <span class="flota-code">${equipoIcon(v.equipo)}${v.equipo}</span>
+        <span class="flota-status red">En mantenimiento</span>
+      </div>
+      <div class="flota-detail">${v.tipoFalla || "Sin tipo de falla"}${v.descripcionFalla ? " — " + v.descripcionFalla : ""}</div>
+    </div>
+  `).join("");
+  const opChips = operativos.map(code => `<span class="flota-chip">${code}</span>`).join("");
+
+  modalBox.innerHTML = `
+    <div class="modal-head">
+      <div><div class="modal-eq">Flota de Volquetes</div></div>
+      <span class="modal-state green">${operativos.length}/${total} operativos</span>
+    </div>
+    <div class="modal-meta">${mtto.length} en mantenimiento &middot; ${operativos.length} operativos &middot; ${total} en total</div>
+    ${mtto.length ? `
+      <div class="modal-desc" style="margin-top:16px;">
+        <span class="cap">En mantenimiento (${mtto.length})</span>
+        <div class="flota-list">${mttoRows}</div>
+      </div>
+    ` : ""}
+    <div class="modal-desc" style="margin-top:16px;">
+      <span class="cap">Operativos (${operativos.length})</span>
+      <div class="flota-chips">${opChips}</div>
+    </div>
+  `;
+  modalBox.querySelectorAll(".flota-row").forEach(row => {
+    row.addEventListener("click", () => {
+      const v = fleet.find(f => f.id === row.dataset.id);
+      if(v) openModal(v, "red", "En mantenimiento");
+    });
+  });
+  modalBackdrop.classList.add("open");
+}
+if(volqCardEl) volqCardEl.addEventListener("click", openFlotaModal);
+
+// ---------- resumen de "Equipos en Mantenimiento" por tipo (volquete / cisterna / rodillo / etc.) ----------
+function openFallaResumenModal(){
+  planModalOpen = false;
+  const items = fleet
+    .filter(v => v.estado === ESTADOS.REPARACION)
+    .sort((a,b) => (isCritico(b) - isCritico(a)) || a.equipo.localeCompare(b.equipo, "es"));
+
+  const counts = {};
+  items.forEach(v => {
+    const code = prefijoDe(v.equipo);
+    counts[code] = (counts[code] || 0) + 1;
+  });
+  const resumen = Object.entries(counts)
+    .sort((a,b) => b[1] - a[1])
+    .map(([code, n]) => {
+      const t = TIPO_EQUIPO[code] || TIPO_EQUIPO_OTROS;
+      return `${n} ${n === 1 ? t.singular : t.plural}`;
+    })
+    .join(" &middot; ");
+
+  const rows = items.map(v => {
+    const t = tipoEquipoDe(v.equipo);
+    return `
+      <div class="flota-row" data-id="${v.id}">
+        <div class="flota-row-head">
+          <span class="flota-code">${equipoIcon(v.equipo)}${v.equipo}</span>
+          <span class="flota-status red">${t.singular}</span>
+        </div>
+        <div class="flota-detail">${v.tipoFalla || "Sin tipo de falla"}${v.descripcionFalla ? " — " + v.descripcionFalla : ""}</div>
+      </div>
+    `;
+  }).join("");
+
+  modalBox.innerHTML = `
+    <div class="modal-head">
+      <div><div class="modal-eq">Equipos en Mantenimiento</div></div>
+      <span class="modal-state red">${items.length} en total</span>
+    </div>
+    <div class="modal-meta">${resumen || "Sin equipos en mantenimiento"}</div>
+    ${items.length ? `<div class="flota-list" style="margin-top:14px;">${rows}</div>` : ""}
+  `;
+  modalBox.querySelectorAll(".flota-row").forEach(row => {
+    row.addEventListener("click", () => {
+      const v = fleet.find(f => f.id === row.dataset.id);
+      if(v) openModal(v, "red", "En mantenimiento");
+    });
+  });
+  modalBackdrop.classList.add("open");
+}
+const fallaResumenCardEl = document.getElementById("fallaResumenCard");
+if(fallaResumenCardEl) fallaResumenCardEl.addEventListener("click", openFallaResumenModal);
+
+// ---------- "Equipos en Standby" -> equipos entregados en el turno actual, del más reciente al más antiguo ----------
+// Turno Día: 06:00–18:00. Turno Noche: 18:00–06:00 del día siguiente.
+function turnoActual(ms){
+  const d = new Date(ms);
+  const hoy6 = new Date(d); hoy6.setHours(6, 0, 0, 0);
+  const hoy18 = new Date(d); hoy18.setHours(18, 0, 0, 0);
+  if(d >= hoy6 && d < hoy18){
+    return { inicio: hoy6.getTime(), fin: hoy18.getTime(), label: "Turno Día" };
+  }
+  if(d < hoy6){
+    const ayer18 = new Date(hoy18);
+    ayer18.setDate(ayer18.getDate() - 1);
+    return { inicio: ayer18.getTime(), fin: hoy6.getTime(), label: "Turno Noche" };
+  }
+  const manana6 = new Date(hoy6);
+  manana6.setDate(manana6.getDate() + 1);
+  return { inicio: hoy18.getTime(), fin: manana6.getTime(), label: "Turno Noche" };
+}
+
+function openSalidasHoyModal(){
+  planModalOpen = false;
+  const turno = turnoActual(Date.now());
+  const items = fleet
+    .filter(v => v.estado === ESTADOS.ENTREGADO && v.salidaAt >= turno.inicio && v.salidaAt < turno.fin)
+    .sort((a,b) => b.salidaAt - a.salidaAt);
+
+  const rows = items.map(v => {
+    const totalMs = v.salidaAt - v.ingresoAt;
+    return `
+      <div class="flota-row" data-id="${v.id}">
+        <div class="flota-row-head">
+          <span class="flota-code">${equipoIcon(v.equipo)}${v.equipo}</span>
+          <span class="flota-status green">Salió ${formatTime(v.salidaAt)}</span>
+        </div>
+        <div class="flota-detail">${v.empresa || "—"}${v.ubicacion ? " &middot; " + v.ubicacion : ""} &middot; ${totalMs > 0 ? formatHM(totalMs) + " inoperativo en total" : ""}</div>
+      </div>
+    `;
+  }).join("");
+
+  modalBox.innerHTML = `
+    <div class="modal-head">
+      <div><div class="modal-eq">Entregados — ${turno.label}</div></div>
+      <span class="modal-state green">${items.length} equipo${items.length === 1 ? "" : "s"}</span>
+    </div>
+    <div class="modal-meta">${formatTime(turno.inicio)} – ${formatTime(turno.fin)} &middot; del más reciente al más antiguo</div>
+    ${items.length
+      ? `<div class="flota-list" style="margin-top:14px;">${rows}</div>`
+      : `<div class="empty" style="margin-top:16px;">Ningún equipo salió del taller en este turno todavía.</div>`}
+  `;
+  modalBox.querySelectorAll(".flota-row").forEach(row => {
+    row.addEventListener("click", () => {
+      const v = fleet.find(f => f.id === row.dataset.id);
+      if(v) openModal(v, "green", "Entregado");
+    });
+  });
+  modalBackdrop.classList.add("open");
+}
+const standbyResumenCardEl = document.getElementById("standbyResumenCard");
+if(standbyResumenCardEl) standbyResumenCardEl.addEventListener("click", openSalidasHoyModal);
+
 function render(){
   // Los registros "reingreso" (equipos que volvieron a mantenimiento por una
   // nueva avería) quedan cerrados: no aparecen en ninguna columna de la TV,
   // solo sirven de historial para el reporte.
   const active = fleet.filter(v => v.estado !== ESTADOS.REINGRESO);
 
-  // Crítico siempre primero; dentro de cada grupo, alfabético si el toggle A-Z está
-  // activo, o el ingreso más reciente primero por defecto.
+  // Crítico siempre primero; dentro de cada grupo, según el modo del botón de orden:
+  // reciente (por defecto), alfabético (A-Z), o mayor tiempo de parada primero.
   const enFalla = active
     .filter(v => v.estado === ESTADOS.REPARACION)
-    .sort((a,b) => (isCritico(b) - isCritico(a)) ||
-      (fallaSortAlpha ? a.equipo.localeCompare(b.equipo, "es") : (b.ingresoAt - a.ingresoAt)));
+    .sort((a,b) => {
+      if(isCritico(a) !== isCritico(b)) return isCritico(b) - isCritico(a);
+      if(fallaSortMode === "alpha") return a.equipo.localeCompare(b.equipo, "es");
+      if(fallaSortMode === "parada") return a.ingresoAt - b.ingresoAt;
+      return b.ingresoAt - a.ingresoAt;
+    });
 
   const enStandby = active
     .filter(v => v.estado === ESTADOS.STANDBY)
@@ -694,10 +1037,16 @@ function render(){
   metricFallaEl.textContent = enFalla.length;
   metricStandbyEl.textContent = enStandby.length;
 
+  // pocas tarjetas en la lista -> las agranda para aprovechar el espacio libre;
+  // apenas vuelven a ser ~5 o más, regresa sola al tamaño compacto.
+  listFallaEl.classList.toggle("roomy", enFalla.length > 0 && enFalla.length <= 4);
+  listStandbyEl.classList.toggle("roomy", enStandby.length > 0 && enStandby.length <= 4);
+
   renderList(listFallaEl, enFalla, buildFallaCard, "Sin equipos en mantenimiento.");
   renderList(listStandbyEl, enStandby, buildStandbyCard, "Sin equipos en standby.");
 
   renderPlanSub();
+  renderVolquetesGauge();
   tickTimers();
 }
 
@@ -737,6 +1086,7 @@ function groupObs(list){
 function renderObs(){
   const grouped = groupObs(obsDocs);
   countObsEl.textContent = grouped.length;
+  listObsEl.classList.toggle("roomy", grouped.length > 0 && grouped.length <= 4);
   renderList(listObsEl, grouped, buildObsCard, "Sin observaciones pendientes.");
 }
 const qObs = query(collection(db, OBS_COLLECTION), orderBy("createdAt", "desc"));
@@ -745,15 +1095,239 @@ onSnapshot(qObs, (snap) => {
   renderObs();
 }, (err) => console.error(err));
 
-// ---------- avance del plan semanal (independiente, se llena a mano desde el celular) ----------
+// ---------- avance del plan semanal (con selector de semana) ----------
+// Manual por defecto (se llena a mano desde el celular). Si hay OT cargadas
+// para la semana ISO seleccionada, el % pasa a calcularse solo (completadas/total)
+// y reemplaza al manual — el campo manual sigue funcionando para semanas sin OT.
 const metricPlanEl = document.getElementById("metricPlan");
 const metricPlanBarEl = document.getElementById("metricPlanBar");
-onSnapshot(doc(db, PLAN_COLLECTION, PLAN_DOC), (snap) => {
-  const data = snap.data();
-  const pct = data && typeof data.avance === "number" ? Math.max(0, Math.min(100, data.avance)) : 0;
+const planCardEl = document.getElementById("planCard");
+const semSelectorEl = document.getElementById("semSelector");
+const semInputEl = document.getElementById("semInput");
+const semPrevEl = document.getElementById("semPrev");
+const semNextEl = document.getElementById("semNext");
+
+let planAvanceManual = 0;
+let allOts = [];       // todas las OT alguna vez cargadas, sin filtrar por semana
+let weekOts = [];      // las que caen en la semana seleccionada (filtroSem/filtroAnio)
+let planModalOpen = false;
+
+const HOY_ISOWEEK = isoWeekInfo(Date.now());
+let filtroRefMs = Date.now();
+let filtroSem = HOY_ISOWEEK.week;
+let filtroAnio = HOY_ISOWEEK.year;
+semInputEl.value = filtroSem;
+
+function isoWeekMonday(year, week){
+  const jan4 = new Date(year, 0, 4);
+  const jan4Dow = (jan4.getDay() + 6) % 7;
+  const week1Monday = new Date(jan4);
+  week1Monday.setDate(jan4.getDate() - jan4Dow);
+  const target = new Date(week1Monday);
+  target.setDate(week1Monday.getDate() + (week - 1) * 7);
+  target.setHours(0, 0, 0, 0);
+  return target.getTime();
+}
+
+function renderPlanAvance(){
+  const total = weekOts.length;
+  const completadas = weekOts.filter(o => o.completada).length;
+  const pct = total > 0
+    ? Math.round((completadas / total) * 100)
+    : Math.max(0, Math.min(100, planAvanceManual));
   metricPlanEl.textContent = pct + "%";
   metricPlanBarEl.style.width = pct + "%";
+}
+
+function aplicarFiltroSemana(){
+  weekOts = allOts.filter(o => {
+    if(!o.fechaProgramada) return false;
+    const w = isoWeekInfo(o.fechaProgramada);
+    return w.week === filtroSem && w.year === filtroAnio;
+  });
+  semInputEl.value = filtroSem;
+  renderPlanAvance();
+  if(planModalOpen) renderPlanModalBody();
+}
+
+function moverSemana(delta){
+  filtroRefMs += delta * 7 * 86400000;
+  const w = isoWeekInfo(filtroRefMs);
+  filtroSem = w.week;
+  filtroAnio = w.year;
+  aplicarFiltroSemana();
+}
+
+semSelectorEl.addEventListener("click", (e) => e.stopPropagation());
+semPrevEl.addEventListener("click", () => moverSemana(-1));
+semNextEl.addEventListener("click", () => moverSemana(1));
+semInputEl.addEventListener("change", () => {
+  const n = Math.max(1, Math.min(53, Math.round(Number(semInputEl.value)) || filtroSem));
+  filtroSem = n;
+  filtroRefMs = isoWeekMonday(filtroAnio, n) + 3 * 86400000;
+  aplicarFiltroSemana();
+});
+
+onSnapshot(doc(db, PLAN_COLLECTION, PLAN_DOC), (snap) => {
+  const data = snap.data();
+  planAvanceManual = data && typeof data.avance === "number" ? data.avance : 0;
+  flotaVolquetes = data && Array.isArray(data.flotaVolquetes)
+    ? data.flotaVolquetes.map(c => String(c).trim().toUpperCase()).filter(Boolean)
+    : [];
+  renderVolquetesGauge();
+  renderPlanAvance();
 }, (err) => console.error(err));
+
+onSnapshot(collection(db, OT_PLAN_COLLECTION), (snap) => {
+  allOts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  aplicarFiltroSemana();
+}, (err) => console.error(err));
+
+function otRowsHtml(items){
+  return items.map(o => `
+    <div class="ot-row${o.completada ? " done" : ""}" data-id="${o.id}">
+      <span class="ot-row-check">${o.completada ? "&#10003;" : ""}</span>
+      <div class="ot-row-main">
+        <div class="ot-row-head"><span class="ot-row-eq">${equipoIcon(o.equipo)}${o.equipo}</span><span class="ot-row-num">OT ${o.ot || "—"}</span></div>
+        <div class="ot-row-desc">${o.descripcion || "—"}</div>
+        <div class="ot-row-meta">${formatDateTime(o.fechaProgramada)}${o.ejecucion ? " &middot; " + o.ejecucion : ""}</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderPlanModalBody(){
+  const items = weekOts.slice().sort((a,b) =>
+    a.completada === b.completada ? a.fechaProgramada - b.fechaProgramada : (a.completada ? 1 : -1));
+  const completadas = items.filter(o => o.completada).length;
+
+  modalBox.innerHTML = `
+    <div class="modal-head">
+      <div><div class="modal-eq">Plan Semanal — SEM ${filtroSem}</div></div>
+      <span class="modal-state green">${completadas}/${items.length} completadas</span>
+    </div>
+    <div class="modal-meta">Toca una OT para marcarla completada o pendiente</div>
+    ${items.length
+      ? `<div class="ot-row-list" style="margin-top:14px;">${otRowsHtml(items)}</div>`
+      : `<div class="empty" style="margin-top:16px;">Sin OT cargadas para la semana ${filtroSem}. Cárgalas desde el celular → pestaña Plan.</div>`}
+  `;
+  modalBox.querySelectorAll(".ot-row").forEach(row => {
+    row.addEventListener("click", async () => {
+      const o = weekOts.find(x => x.id === row.dataset.id);
+      if(!o) return;
+      const nuevoValor = !o.completada;
+      try {
+        await updateDoc(doc(db, OT_PLAN_COLLECTION, o.id), {
+          completada: nuevoValor,
+          completadaAt: nuevoValor ? Date.now() : null
+        });
+      } catch(e){
+        console.error(e);
+      }
+    });
+  });
+}
+
+function openPlanModal(){
+  planModalOpen = true;
+  renderPlanModalBody();
+  modalBackdrop.classList.add("open");
+}
+planCardEl.addEventListener("click", openPlanModal);
+
+// ---------- carga masiva de OT desde Excel ----------
+const otUploadBtnEl = document.getElementById("otUploadBtn");
+const otUploadInputEl = document.getElementById("otUploadInput");
+
+function normalizarTexto(s){
+  return String(s || "").normalize("NFD").replace(new RegExp("[̀-ͯ]", "g"), "").toLowerCase().trim();
+}
+function clasificarColumnaOt(header){
+  const n = normalizarTexto(header);
+  if(n.includes("equipo")) return "equipo";
+  if(n.includes("descri")) return "descripcion";
+  if(n.includes("fecha")) return "fechaProgramada";
+  if(n.includes("ejecu")) return "ejecucion";
+  const palabras = n.split(/[^a-z0-9]+/).filter(Boolean);
+  if(palabras.includes("ot")) return "ot";
+  return null;
+}
+function excelValorAFecha(valor){
+  if(valor instanceof Date && !isNaN(valor.getTime())) return valor.getTime();
+  if(typeof valor === "number") return Math.round((valor - 25569) * 86400000);
+  if(typeof valor === "string" && valor.trim()){
+    const d = new Date(valor.trim());
+    if(!isNaN(d.getTime())) return d.getTime();
+  }
+  return null;
+}
+function setUploadBtnEstado(texto, esError){
+  otUploadBtnEl.textContent = texto;
+  otUploadBtnEl.classList.toggle("error", !!esError);
+}
+
+otUploadBtnEl.addEventListener("click", (e) => {
+  e.stopPropagation();
+  otUploadInputEl.value = "";
+  otUploadInputEl.click();
+});
+otUploadInputEl.addEventListener("click", (e) => e.stopPropagation());
+
+otUploadInputEl.addEventListener("change", async () => {
+  const file = otUploadInputEl.files[0];
+  if(!file) return;
+  otUploadBtnEl.disabled = true;
+  setUploadBtnEstado("Leyendo…", false);
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: "array", cellDates: true });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: "" });
+    if(rows.length < 2) throw new Error("el archivo no tiene filas de datos");
+
+    const colMap = {};
+    rows[0].forEach((h, i) => {
+      const campo = clasificarColumnaOt(h);
+      if(campo) colMap[campo] = i;
+    });
+    if(colMap.equipo == null || colMap.fechaProgramada == null){
+      throw new Error("faltan las columnas Equipo y/o Fecha Programada");
+    }
+
+    const items = [];
+    for(let i = 1; i < rows.length; i++){
+      const row = rows[i];
+      if(!row || row.every(c => c === "" || c == null)) continue;
+      const equipo = String(row[colMap.equipo] ?? "").trim().toUpperCase();
+      const fechaProgramada = excelValorAFecha(row[colMap.fechaProgramada]);
+      if(!equipo || !fechaProgramada) continue;
+      items.push({
+        equipo,
+        descripcion: colMap.descripcion != null ? String(row[colMap.descripcion] ?? "").trim() : "",
+        ot: colMap.ot != null ? String(row[colMap.ot] ?? "").trim() : "",
+        ejecucion: colMap.ejecucion != null ? String(row[colMap.ejecucion] ?? "").trim() : "",
+        fechaProgramada,
+        completada: false,
+        completadaAt: null,
+        createdAt: Date.now()
+      });
+    }
+    if(items.length === 0) throw new Error("ninguna fila válida (revisa Equipo y Fecha Programada)");
+
+    for(let i = 0; i < items.length; i += 450){
+      const batch = writeBatch(db);
+      items.slice(i, i + 450).forEach(it => batch.set(doc(collection(db, OT_PLAN_COLLECTION)), it));
+      await batch.commit();
+    }
+    setUploadBtnEstado(`${items.length} OT cargadas ✓`, false);
+  } catch(e){
+    console.error(e);
+    setUploadBtnEstado("Error: " + e.message, true);
+  } finally {
+    otUploadBtnEl.disabled = false;
+    setTimeout(() => setUploadBtnEstado("Cargar Excel de OTs", false), 4000);
+  }
+});
 
 // "OT cerradas hoy" y su tendencia vs. ayer se calculan solos a partir de las
 // órdenes de trabajo (documentos de "equipos") abiertas en cada jornada — es
