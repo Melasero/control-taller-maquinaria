@@ -446,6 +446,10 @@
   .board-overlay-sub{
     margin-left:auto; font-family:'IBM Plex Mono', monospace; color:#8fa0b3; font-size:13px; letter-spacing:0.05em;
   }
+  .board-overlay-hours{
+    font-family:'IBM Plex Mono', monospace; font-size:13px; font-weight:700; letter-spacing:0.04em;
+    color: var(--red); background: rgba(242,73,92,0.12); padding:5px 12px; border-radius:999px; white-space:nowrap;
+  }
   .board-overlay-close{
     background:none; border:1px solid #333; color:#8fa0b3; font-size:22px; width:42px; height:42px;
     border-radius:8px; cursor:pointer; line-height:1; flex-shrink:0;
@@ -455,18 +459,9 @@
     flex:1; overflow-y:auto; padding:14px 32px 34px;
     display:grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); column-gap:32px; align-content:start;
   }
-  .board-section-title{
-    grid-column: 1 / -1; font-family:'IBM Plex Mono', monospace; font-size:11.5px; font-weight:800;
-    letter-spacing:0.08em; text-transform:uppercase; color:#6b7280; padding:16px 6px 7px; border-bottom:1px solid #262626;
-    margin-bottom:2px;
-  }
-  .board-section-title:first-child{ padding-top:2px; }
-  .board-section-title.mtto{ color: var(--red); }
-
   .board-row{
     display:grid; grid-template-columns: 108px 1fr auto; align-items:center; gap:14px;
-    padding:13px 10px; margin-bottom:2px; border-bottom:1px solid #1a1a1a; border-radius:6px;
-    font-family:'IBM Plex Mono', monospace;
+    padding:13px 6px; border-bottom:1px solid #1a1a1a; font-family:'IBM Plex Mono', monospace;
   }
   .board-row .b-code{ font-weight:800; font-size:18px; color:#f5f5f5; letter-spacing:0.03em; }
   .board-row .b-tipo{ font-size:11px; color:#6b7280; text-transform:uppercase; letter-spacing:0.06em; }
@@ -475,17 +470,14 @@
     border-radius:4px; white-space:nowrap; justify-self:end;
   }
   .board-row.op .b-status{ background: rgba(52,211,153,0.14); color: var(--green); }
-
-  .board-row.mtto{
-    cursor:pointer; background: rgba(242,73,92,0.1); border:1px solid rgba(242,73,92,0.3); border-left:4px solid var(--red);
-    padding-left:12px; animation: boardRowGlow 2.4s ease-in-out infinite;
+  .board-row.mtto{ cursor:pointer; }
+  .board-row.mtto:hover{ background: rgba(255,255,255,0.035); }
+  .board-row.mtto .b-status{
+    background: rgba(242,73,92,0.16); color: var(--red); animation: boardStatusBlink 1.8s ease-in-out infinite;
   }
-  .board-row.mtto:hover{ background: rgba(242,73,92,0.17); }
-  .board-row.mtto .b-code{ color:#fda4af; }
-  .board-row.mtto .b-status{ background: var(--red); color:#fff; }
-  @keyframes boardRowGlow{
-    0%,100%{ box-shadow: 0 0 0 0 rgba(242,73,92,0.0); }
-    50%{ box-shadow: 0 0 16px 1px rgba(242,73,92,0.28); }
+  @keyframes boardStatusBlink{
+    0%,100%{ opacity:1; }
+    50%{ opacity:0.45; }
   }
 </style>
 </head>
@@ -570,7 +562,6 @@
       <div class="count" id="countObs">0</div>
     </div>
     <div class="list" id="listObs"></div>
-    <div class="hint-tv">Solo lectura — se marca desde el celular</div>
   </div>
   <div class="column">
     <div class="col-head">
@@ -592,6 +583,7 @@
   <div class="board-overlay-head">
     <div class="board-overlay-title"><span class="board-dot"></span>ESTADO DE FLOTA &middot; VOLQUETES</div>
     <div class="board-overlay-sub" id="boardOverlaySub">—</div>
+    <div class="board-overlay-hours" id="boardOverlayHours" hidden></div>
     <button type="button" class="board-overlay-close" id="boardOverlayClose" aria-label="Cerrar">&times;</button>
   </div>
   <div class="board-overlay-grid" id="boardOverlayGrid"></div>
@@ -1042,33 +1034,39 @@ function renderVolquetesGauge(){
 // ---------- pantalla completa estilo "tablero de aeropuerto" con el estado de cada volquete ----------
 const boardOverlayEl = document.getElementById("boardOverlay");
 const boardOverlaySubEl = document.getElementById("boardOverlaySub");
+const boardOverlayHoursEl = document.getElementById("boardOverlayHours");
 const boardOverlayGridEl = document.getElementById("boardOverlayGrid");
 function closeBoardOverlay(){ boardOverlayEl.classList.remove("open"); }
 document.getElementById("boardOverlayClose").addEventListener("click", closeBoardOverlay);
 
+// Suma las horas inoperativas SOLO de los volquetes de flotaVolquetes que están
+// en reparación ahora mismo — nunca de otro equipo que no sea parte de esos 57.
+function renderBoardHoras(){
+  const enMtto = flotaVolquetes.map(fallaActualDe).filter(Boolean);
+  if(enMtto.length === 0){ boardOverlayHoursEl.hidden = true; return; }
+  const totalMs = enMtto.reduce((sum, v) => sum + Math.max(0, Date.now() - v.ingresoAt), 0);
+  boardOverlayHoursEl.hidden = false;
+  boardOverlayHoursEl.textContent = `⏳ ${formatHM(totalMs)} acumuladas (${enMtto.length})`;
+}
+
 function openFlotaFullscreen(){
   planModalOpen = false;
-  const mtto = [];
-  const operativos = [];
-  flotaVolquetes.forEach(code => (fallaActualDe(code) ? mtto : operativos).push(code));
-  mtto.sort((a,b) => a.localeCompare(b, "es"));
-  operativos.sort((a,b) => a.localeCompare(b, "es"));
+  const items = flotaVolquetes.slice().sort((a,b) => a.localeCompare(b, "es"));
+  const enMtto = items.filter(code => fallaActualDe(code)).length;
+  boardOverlaySubEl.textContent = `${items.length - enMtto}/${items.length} OPERATIVOS · ${enMtto} EN MANTENIMIENTO`;
 
-  boardOverlaySubEl.textContent = `${operativos.length}/${flotaVolquetes.length} OPERATIVOS &middot; ${mtto.length} EN MANTENIMIENTO`;
-
-  const filaMtto = (code) => {
+  boardOverlayGridEl.innerHTML = items.map(code => {
     const v = fallaActualDe(code);
     const tipo = tipoEquipoDe(code);
-    return `
-      <div class="board-row mtto" data-id="${v.id}">
-        <span class="b-code">${code}</span>
-        <span class="b-tipo">${tipo.singular}</span>
-        <span class="b-status">&#128295; ${v.tipoFalla || "En mantenimiento"}</span>
-      </div>
-    `;
-  };
-  const filaOp = (code) => {
-    const tipo = tipoEquipoDe(code);
+    if(v){
+      return `
+        <div class="board-row mtto" data-id="${v.id}">
+          <span class="b-code">${code}</span>
+          <span class="b-tipo">${tipo.singular}</span>
+          <span class="b-status">${v.tipoFalla || "En mantenimiento"}</span>
+        </div>
+      `;
+    }
     return `
       <div class="board-row op">
         <span class="b-code">${code}</span>
@@ -1076,16 +1074,7 @@ function openFlotaFullscreen(){
         <span class="b-status">Operativo</span>
       </div>
     `;
-  };
-
-  let html = "";
-  if(mtto.length){
-    html += `<div class="board-section-title mtto">&#9888; En mantenimiento — ${mtto.length}</div>`;
-    html += mtto.map(filaMtto).join("");
-  }
-  html += `<div class="board-section-title">Operativos — ${operativos.length}</div>`;
-  html += operativos.map(filaOp).join("");
-  boardOverlayGridEl.innerHTML = html;
+  }).join("");
 
   boardOverlayGridEl.querySelectorAll(".board-row.mtto").forEach(row => {
     row.addEventListener("click", () => {
@@ -1093,6 +1082,7 @@ function openFlotaFullscreen(){
       if(v){ closeBoardOverlay(); openModal(v, "red", "En mantenimiento"); }
     });
   });
+  renderBoardHoras();
   boardOverlayEl.classList.add("open");
 }
 if(volqCardEl) volqCardEl.addEventListener("click", openFlotaFullscreen);
@@ -1267,6 +1257,7 @@ function tickTimers(){
       if(alertEl) alertEl.hidden = !isAlert;
     }
   });
+  if(boardOverlayEl.classList.contains("open")) renderBoardHoras();
 }
 setInterval(tickTimers, 1000);
 
