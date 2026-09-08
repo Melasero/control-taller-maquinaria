@@ -124,7 +124,7 @@
   }
   .hint-tv{ padding:0 20px 10px; font-size:10px; color: var(--text-faint); text-align:center; text-transform:uppercase; letter-spacing:0.04em; flex-shrink:0; }
 
-  .list{ flex:1; overflow-y:auto; padding:2px 18px 18px; display:flex; flex-direction:column; gap:9px; }
+  .list{ flex:1; overflow-y:auto; padding:2px 18px 18px; display:flex; flex-direction:column; gap:6px; }
   .list::-webkit-scrollbar{ width:7px; }
   .list::-webkit-scrollbar-thumb{ background: var(--border); border-radius:4px; }
 
@@ -132,7 +132,7 @@
 
   .card{
     position:relative; cursor:pointer;
-    background: var(--card); border:1px solid var(--border); border-radius:11px; padding:11px 14px;
+    background: var(--card); border:1px solid var(--border); border-radius:11px; padding:8px 12px;
     transition: transform .35s cubic-bezier(.2,.8,.2,1), opacity .35s ease, box-shadow .3s ease, background .3s ease, border-color .15s ease;
   }
   .card:hover{ border-color: var(--text-faint); }
@@ -168,25 +168,25 @@
     color:#2b1e02; background: var(--yellow-bright); padding:2px 7px; border-radius:6px; margin-top:6px;
   }
 
-  /* cabecera de tarjeta: nombre a la izq., tipo de falla al centro, fecha+cronómetro a la der. */
-  .card-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  /* cabecera de tarjeta: nombre (+ empresa/ubicación) a la izq., fecha+cronómetro+tipo de falla a la der. */
+  .card-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
   .card-head-left{ min-width:0; flex:1; }
-  .card-head-mid{ flex-shrink:0; }
-  .card-head-right{ text-align:right; flex-shrink:0; display:flex; flex-direction:column; align-items:flex-end; gap:3px; }
+  .card-head-right{ text-align:right; flex-shrink:0; display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
   .head-date{
     font-family:'IBM Plex Mono', monospace; font-size:10px; color: var(--text-faint);
     white-space:nowrap; font-variant-numeric: tabular-nums;
   }
   .head-timer{
-    font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:16px; margin-top:1px;
+    font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:15px; margin-top:1px;
     font-variant-numeric: tabular-nums; white-space:nowrap;
   }
   .card.red .head-timer{ color: var(--red); }
   .card.yellow .head-timer{ color: var(--yellow); }
   .card.green .head-timer{ color: var(--green); }
 
-  .eq-name-row{ display:flex; align-items:baseline; gap:7px; flex-wrap:wrap; }
-  .eq-name{ font-weight:700; font-size:16px; line-height:1.2; }
+  .eq-name-row{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .eq-icon{ width:15px; height:15px; flex-shrink:0; color: var(--text-faint); }
+  .eq-name{ font-weight:700; font-size:15px; line-height:1.2; }
   .hm-tag{ font-family:'IBM Plex Mono', monospace; font-size:11px; font-weight:600; color: var(--text-faint); }
   .critico-mini{
     font-size:8.5px; font-weight:800; letter-spacing:0.04em; padding:1px 6px; border-radius:999px;
@@ -196,11 +196,16 @@
   .mini-meta{ display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:4px; }
   .meta-tag{
     display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:700; letter-spacing:0.02em;
-    text-transform:uppercase; padding:2px 7px; border-radius:6px; line-height:1.6; white-space:nowrap;
+    text-transform:uppercase; padding:2px 7px; border-radius:6px; line-height:1.5; white-space:nowrap;
   }
   .meta-tag svg{ width:10px; height:10px; flex-shrink:0; }
   .meta-tag.company{ background: var(--panel); color: var(--text-dim); border:1px solid var(--border); }
   .meta-tag.location{ background:transparent; color: var(--text-faint); border:none; padding-left:0; }
+
+  .falla-desc{
+    margin-top:4px; font-size:11.5px; line-height:1.35; color: var(--text-dim);
+    display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
+  }
 
   .parts-alert{
     display:flex; align-items:center; gap:7px; margin-top:7px; padding:6px 9px; border-radius:8px;
@@ -227,6 +232,8 @@
   }
   .modal-backdrop.open .modal{ transform: translateY(0) scale(1); }
   .modal-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:4px; }
+  .modal-eq-row{ display:flex; align-items:center; gap:9px; }
+  .modal-eq-row .eq-icon{ width:22px; height:22px; }
   .modal-eq{ font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:28px; line-height:1.1; }
   .modal-state{
     font-family:'IBM Plex Mono', monospace; font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
@@ -380,13 +387,32 @@ function tipoFallaTag(tipo){
 }
 const ICON_COMPANY = '<rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>';
 const ICON_LOCATION = '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>';
+function companyTag(empresa){
+  return `<span class="meta-tag company"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_COMPANY}</svg>${empresa}</span>`;
+}
+function locationTag(ubicacion){
+  return `<span class="meta-tag location"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_LOCATION}</svg>${ubicacion}</span>`;
+}
 function miniMeta(empresa, ubicacion){
-  return `
-    <div class="mini-meta">
-      <span class="meta-tag company"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_COMPANY}</svg>${empresa}</span>
-      <span class="meta-tag location"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_LOCATION}</svg>${ubicacion}</span>
-    </div>
-  `;
+  return `<div class="mini-meta">${companyTag(empresa)}${locationTag(ubicacion)}</div>`;
+}
+
+// ---------- ícono de tipo de máquina (por prefijo del código de equipo: CV / EX / RO / CA-MC) ----------
+const ICON_CAMION = '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14v10"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>';
+const ICON_EXCAVADORA = '<rect x="2" y="16" width="8" height="4" rx="1"/><rect x="4" y="10" width="6" height="6" rx="1"/><path d="M9 12l7-4"/><path d="M16 8l3 5"/><path d="M19 13l2 1-1 2-2-1z"/>';
+const ICON_RODILLO = '<circle cx="7" cy="17" r="5"/><rect x="11" y="10" width="8" height="6" rx="1"/><circle cx="18" cy="18" r="3"/>';
+const ICON_CARGADOR = '<path d="M3 21V9"/><path d="M3 9h3"/><rect x="3" y="15" width="4" height="4"/><path d="M7 19h6l3-3"/><rect x="13" y="14" width="6" height="5" rx="1"/><circle cx="9" cy="21" r="1.5"/><circle cx="17" cy="21" r="1.5"/>';
+const ICON_MAQUINA_DEFAULT = '<rect x="3" y="8" width="18" height="10" rx="2"/><circle cx="8" cy="18" r="2"/><circle cx="16" cy="18" r="2"/>';
+function equipoIcon(equipo){
+  const m = /^([A-Za-z]+)/.exec((equipo || "").trim());
+  const code = m ? m[1].toUpperCase() : "";
+  let path;
+  if(code === "CV") path = ICON_CAMION;
+  else if(code === "EX") path = ICON_EXCAVADORA;
+  else if(code === "RO") path = ICON_RODILLO;
+  else if(code === "CA" || code === "MC") path = ICON_CARGADOR;
+  else path = ICON_MAQUINA_DEFAULT;
+  return `<svg class="eq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
 }
 function isCritico(v){ return v.prioridad === PRIORIDADES.CRITICO; }
 function criticoMini(v){ return isCritico(v) ? `<span class="critico-mini">Crítico</span>` : ""; }
@@ -403,15 +429,17 @@ function buildFallaCard(v){
   card.innerHTML = `
     <div class="card-head">
       <div class="card-head-left">
-        <div class="eq-name-row"><div class="eq-name">${v.equipo}</div>${criticoMini(v)}${hmTag(v)}</div>
+        <div class="eq-name-row">
+          ${equipoIcon(v.equipo)}<div class="eq-name">${v.equipo}</div>${criticoMini(v)}${hmTag(v)}${companyTag(v.empresa)}${locationTag(v.ubicacion)}
+        </div>
+        ${v.descripcionFalla ? `<div class="falla-desc">${v.descripcionFalla}</div>` : ""}
       </div>
-      <div class="card-head-mid">${tipoFallaTag(v.tipoFalla)}</div>
       <div class="card-head-right">
         <div class="head-date">${formatDateTime(v.ingresoAt)}</div>
         <div class="head-timer" data-role="timer"></div>
+        ${tipoFallaTag(v.tipoFalla)}
       </div>
     </div>
-    ${miniMeta(v.empresa, v.ubicacion)}
     ${partsAlert(v)}
   `;
   card.addEventListener("click", () => openModal(v, "red", "En mantenimiento"));
@@ -425,7 +453,7 @@ function buildStandbyCard(v){
   card.innerHTML = `
     <div class="card-head">
       <div class="card-head-left">
-        <div class="eq-name-row"><div class="eq-name">${v.equipo}</div>${criticoMini(v)}${hmTag(v)}</div>
+        <div class="eq-name-row">${equipoIcon(v.equipo)}<div class="eq-name">${v.equipo}</div>${criticoMini(v)}${hmTag(v)}</div>
       </div>
       <div class="card-head-right">
         <div class="head-date">Operativo ${formatDateTime(v.operativoAt)}</div>
@@ -447,7 +475,7 @@ function buildObsCard(g){
   card.innerHTML = `
     <div class="card-head">
       <div class="card-head-left">
-        <div class="eq-name-row"><div class="eq-name">${g.equipo}</div>${g.horometro != null ? `<span class="hm-tag">&middot; ${g.horometro} HM</span>` : ""}</div>
+        <div class="eq-name-row">${equipoIcon(g.equipo)}<div class="eq-name">${g.equipo}</div>${g.horometro != null ? `<span class="hm-tag">&middot; ${g.horometro} HM</span>` : ""}</div>
       </div>
       <div class="card-head-right"><div class="head-date">últ. ${formatDateTime(g.lastAt)}</div></div>
     </div>
@@ -470,7 +498,7 @@ function openModal(v, color, stateLabel){
     : "";
   modalBox.innerHTML = `
     <div class="modal-head">
-      <div><div class="modal-eq">${v.equipo}${isCritico(v) ? ` <span class="critico-mini" style="vertical-align:middle;">Crítico</span>` : ""}</div></div>
+      <div><div class="modal-eq-row">${equipoIcon(v.equipo)}<div class="modal-eq">${v.equipo}${isCritico(v) ? ` <span class="critico-mini" style="vertical-align:middle;">Crítico</span>` : ""}</div></div></div>
       <span class="modal-state ${color}">${stateLabel}</span>
     </div>
     <div class="modal-meta">${v.empresa}<span class="sep">&middot;</span>${v.ubicacion}${v.tipoFalla ? `<span class="sep">&middot;</span>${v.tipoFalla}` : ""}</div>
@@ -489,7 +517,7 @@ function openObsModal(g){
   const itemsHtml = g.notas.map(n => `<div class="obs-item"><span class="bullet">&#9679;</span><span>${n.texto}</span></div>`).join("");
   modalBox.innerHTML = `
     <div class="modal-head">
-      <div><div class="modal-eq">${g.equipo}</div></div>
+      <div><div class="modal-eq-row">${equipoIcon(g.equipo)}<div class="modal-eq">${g.equipo}</div></div></div>
       <span class="modal-state yellow">Con observaciones</span>
     </div>
     <div class="modal-meta">${g.notas.length} nota${g.notas.length === 1 ? "" : "s"} pendiente${g.notas.length === 1 ? "" : "s"}${g.horometro != null ? `<span class="sep">&middot;</span>${g.horometro} HM` : ""}</div>
@@ -562,14 +590,14 @@ function render(){
   // solo sirven de historial para el reporte.
   const active = fleet.filter(v => v.estado !== ESTADOS.REINGRESO);
 
-  // Crítico siempre primero; dentro de cada grupo, el más antiguo primero.
+  // Crítico siempre primero; dentro de cada grupo, orden alfabético por equipo.
   const enFalla = active
     .filter(v => v.estado === ESTADOS.REPARACION)
-    .sort((a,b) => (isCritico(b) - isCritico(a)) || (a.ingresoAt - b.ingresoAt));
+    .sort((a,b) => (isCritico(b) - isCritico(a)) || a.equipo.localeCompare(b.equipo, "es"));
 
   const enStandby = active
     .filter(v => v.estado === ESTADOS.STANDBY)
-    .sort((a,b) => (isCritico(b) - isCritico(a)) || (a.operativoAt - b.operativoAt));
+    .sort((a,b) => (isCritico(b) - isCritico(a)) || a.equipo.localeCompare(b.equipo, "es"));
 
   countFallaEl.textContent = enFalla.length;
   countStandbyEl.textContent = enStandby.length;
@@ -614,7 +642,7 @@ function groupObs(list){
     if(o.horometro != null) g.horometro = o.horometro;
     if(o.createdAt > g.lastAt) g.lastAt = o.createdAt;
   });
-  return Object.values(map).sort((a,b) => b.lastAt - a.lastAt);
+  return Object.values(map).sort((a,b) => a.equipo.localeCompare(b.equipo, "es"));
 }
 function renderObs(){
   const grouped = groupObs(obsDocs);
