@@ -122,6 +122,15 @@
     background: var(--panel-2); border:1px solid var(--border); padding:2px 9px; border-radius:999px;
     font-variant-numeric: tabular-nums; flex-shrink:0;
   }
+  .col-head-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .sort-toggle{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; font-weight:700; letter-spacing:0.03em;
+    color: var(--text-dim); background: var(--panel-2); border:1px solid var(--border);
+    padding:2px 9px; border-radius:999px; cursor:pointer;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .sort-toggle:hover{ border-color: var(--text-faint); }
+  .sort-toggle.active{ background: var(--accent-dim); color: var(--accent); border-color: rgba(94,200,245,0.4); }
   .hint-tv{ padding:0 20px 10px; font-size:10px; color: var(--text-faint); text-align:center; text-transform:uppercase; letter-spacing:0.04em; flex-shrink:0; }
 
   .list{ flex:1; overflow-y:auto; padding:2px 18px 18px; display:flex; flex-direction:column; gap:6px; }
@@ -192,6 +201,11 @@
     font-size:8.5px; font-weight:800; letter-spacing:0.04em; padding:1px 6px; border-radius:999px;
     background: rgba(244,63,94,0.22); color:#fda4af; text-transform:uppercase;
   }
+  .reingreso-badge{
+    font-size:9.5px; font-weight:800; letter-spacing:0.03em; padding:1px 6px; border-radius:999px;
+    background: rgba(148,163,184,0.16); color: var(--text-dim); white-space:nowrap;
+  }
+  .reingreso-badge.warn{ background: rgba(242,73,92,0.18); color: var(--red); }
 
   .mini-meta{ display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:4px; }
   .meta-tag{
@@ -226,7 +240,8 @@
   }
   .modal-backdrop.open{ opacity:1; pointer-events:auto; }
   .modal{
-    width:100%; max-width:520px; background: var(--panel-2); border:1px solid var(--border); border-radius:14px;
+    width:100%; max-width:520px; max-height:calc(100vh - 48px); overflow-y:auto;
+    background: var(--panel-2); border:1px solid var(--border); border-radius:14px;
     padding:28px 28px 24px; box-shadow: 0 30px 70px rgba(0,0,0,0.55);
     transform: translateY(10px) scale(0.98); transition: transform .18s ease;
   }
@@ -253,6 +268,14 @@
   .modal-field .cap{ font-size:10.5px; color: var(--text-faint); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px; }
   .modal-field .val{ font-family:'IBM Plex Mono', monospace; font-size:14px; color: var(--text); font-variant-numeric: tabular-nums; }
   .modal-close{ background:none; border:none; color: var(--text-faint); font-size:22px; line-height:1; cursor:pointer; padding:2px 4px; }
+
+  .hist-list{ margin-top:10px; display:flex; flex-direction:column; gap:10px; max-height:220px; overflow-y:auto; padding-right:4px; }
+  .hist-item{ padding-bottom:8px; border-bottom:1px solid var(--border); }
+  .hist-item:last-child{ border-bottom:none; padding-bottom:0; }
+  .hist-item-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .hist-date{ font-family:'IBM Plex Mono', monospace; font-size:11px; color: var(--text-faint); white-space:nowrap; }
+  .hist-tipo{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; color: var(--text-dim); }
+  .hist-desc{ margin-top:4px; font-size:13px; line-height:1.4; color: var(--text); }
   .modal-close:hover{ color: var(--text); }
 </style>
 </head>
@@ -298,7 +321,10 @@
   <div class="column">
     <div class="col-head">
       <div class="label"><span class="ind red"></span><h2>En mantenimiento</h2></div>
-      <div class="count" id="countFalla">0</div>
+      <div class="col-head-right">
+        <button class="sort-toggle" id="fallaSortToggle" title="Ordenar alfabéticamente por equipo">A-Z</button>
+        <div class="count" id="countFalla">0</div>
+      </div>
     </div>
     <div class="list" id="listFalla"></div>
   </div>
@@ -354,6 +380,13 @@ const countFallaEl = document.getElementById("countFalla");
 const countStandbyEl = document.getElementById("countStandby");
 const countObsEl = document.getElementById("countObs");
 const metricFallaEl = document.getElementById("metricFalla");
+let fallaSortAlpha = false;
+const fallaSortToggleEl = document.getElementById("fallaSortToggle");
+fallaSortToggleEl.addEventListener("click", () => {
+  fallaSortAlpha = !fallaSortAlpha;
+  fallaSortToggleEl.classList.toggle("active", fallaSortAlpha);
+  render();
+});
 const metricStandbyEl = document.getElementById("metricStandby");
 
 const nodeMap = {};
@@ -416,6 +449,60 @@ function equipoIcon(equipo){
 }
 function isCritico(v){ return v.prioridad === PRIORIDADES.CRITICO; }
 function criticoMini(v){ return isCritico(v) ? `<span class="critico-mini">Crítico</span>` : ""; }
+
+// ---------- reincidencias del mes (ingresos ya cerrados del mismo equipo, sin contar el actual) ----------
+function monthStart(ms){
+  const d = new Date(ms);
+  d.setDate(1); d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+function historialMes(equipo, excludeId){
+  const start = monthStart(Date.now());
+  return fleet
+    .filter(v => v.equipo === equipo && v.id !== excludeId &&
+      (v.estado === ESTADOS.ENTREGADO || v.estado === ESTADOS.REINGRESO) &&
+      v.ingresoAt >= start)
+    .sort((a, b) => b.ingresoAt - a.ingresoAt);
+}
+function historialHtml(equipo, excludeId){
+  const items = historialMes(equipo, excludeId);
+  if(items.length === 0) return "";
+  const rows = items.map(h => `
+    <div class="hist-item">
+      <div class="hist-item-head">
+        <span class="hist-date">${formatDateTime(h.ingresoAt)}</span>
+        ${h.tipoFalla ? `<span class="hist-tipo">${h.tipoFalla}</span>` : ""}
+      </div>
+      ${h.descripcionFalla ? `<div class="hist-desc">${h.descripcionFalla}</div>` : ""}
+    </div>
+  `).join("");
+  return `
+    <div class="modal-desc" style="margin-top:16px;">
+      <span class="cap">Fallas anteriores este mes (${items.length})</span>
+      <div class="hist-list">${rows}</div>
+    </div>
+  `;
+}
+// tiempo inoperativo acumulado este mes: suma de los ingresos ya cerrados + lo que
+// lleva el ingreso actual (recortado al inicio del mes si empezó antes de este mes)
+function tiempoPerdidoMes(v){
+  const start = monthStart(Date.now());
+  const cerrados = historialMes(v.equipo, v.id).reduce((sum, h) => {
+    const fin = h.salidaAt || h.cierreAt || h.ingresoAt;
+    return sum + Math.max(0, fin - h.ingresoAt);
+  }, 0);
+  const actual = Math.max(0, Date.now() - Math.max(v.ingresoAt, start));
+  return cerrados + actual;
+}
+function statsBadge(v){
+  const n = historialMes(v.equipo, v.id).length;
+  const ms = tiempoPerdidoMes(v);
+  const warn = n >= 3 ? " warn" : "";
+  const label = (n > 0 ? `&#8635; ${n} &middot; ` : "") + `&#9201; ${formatHM(ms)}`;
+  const tip = `Tiempo inoperativo acumulado este mes (incluye el ingreso actual)`
+    + (n > 0 ? ` · ${n} ingreso${n === 1 ? "" : "s"} anterior${n === 1 ? "" : "es"} cerrado${n === 1 ? "" : "s"}` : "");
+  return `<span class="reingreso-badge${warn}" title="${tip}">${label} este mes</span>`;
+}
 function hmTag(v){ return v.horometro != null ? `<span class="hm-tag">&middot; ${v.horometro} HM</span>` : ""; }
 function partsAlert(v){
   if(!v.bloqueadoPorRepuesto) return "";
@@ -430,7 +517,7 @@ function buildFallaCard(v){
     <div class="card-head">
       <div class="card-head-left">
         <div class="eq-name-row">
-          ${equipoIcon(v.equipo)}<div class="eq-name">${v.equipo}</div>${criticoMini(v)}${hmTag(v)}${companyTag(v.empresa)}${locationTag(v.ubicacion)}
+          ${equipoIcon(v.equipo)}<div class="eq-name">${v.equipo}</div>${criticoMini(v)}${hmTag(v)}${statsBadge(v)}${companyTag(v.empresa)}${locationTag(v.ubicacion)}
         </div>
         ${v.descripcionFalla ? `<div class="falla-desc">${v.descripcionFalla}</div>` : ""}
       </div>
@@ -453,7 +540,7 @@ function buildStandbyCard(v){
   card.innerHTML = `
     <div class="card-head">
       <div class="card-head-left">
-        <div class="eq-name-row">${equipoIcon(v.equipo)}<div class="eq-name">${v.equipo}</div>${criticoMini(v)}${hmTag(v)}</div>
+        <div class="eq-name-row">${equipoIcon(v.equipo)}<div class="eq-name">${v.equipo}</div>${criticoMini(v)}${hmTag(v)}${statsBadge(v)}</div>
       </div>
       <div class="card-head-right">
         <div class="head-date">Operativo ${formatDateTime(v.operativoAt)}</div>
@@ -510,6 +597,7 @@ function openModal(v, color, stateLabel){
       ${v.operativoAt ? `<div class="modal-field"><span class="cap">Pasó a operativo</span><div class="val">${formatDateTime(v.operativoAt)}</div></div>` : ""}
       ${v.avance != null ? `<div class="modal-field"><span class="cap">Avance de reparación</span><div class="val">${v.avance}%</div></div>` : ""}
     </div>
+    ${historialHtml(v.equipo, v.id)}
   `;
   modalBackdrop.classList.add("open");
 }
@@ -590,14 +678,16 @@ function render(){
   // solo sirven de historial para el reporte.
   const active = fleet.filter(v => v.estado !== ESTADOS.REINGRESO);
 
-  // Crítico siempre primero; dentro de cada grupo, orden alfabético por equipo.
+  // Crítico siempre primero; dentro de cada grupo, alfabético si el toggle A-Z está
+  // activo, o el ingreso más reciente primero por defecto.
   const enFalla = active
     .filter(v => v.estado === ESTADOS.REPARACION)
-    .sort((a,b) => (isCritico(b) - isCritico(a)) || a.equipo.localeCompare(b.equipo, "es"));
+    .sort((a,b) => (isCritico(b) - isCritico(a)) ||
+      (fallaSortAlpha ? a.equipo.localeCompare(b.equipo, "es") : (b.ingresoAt - a.ingresoAt)));
 
   const enStandby = active
     .filter(v => v.estado === ESTADOS.STANDBY)
-    .sort((a,b) => (isCritico(b) - isCritico(a)) || a.equipo.localeCompare(b.equipo, "es"));
+    .sort((a,b) => (isCritico(b) - isCritico(a)) || (b.operativoAt - a.operativoAt));
 
   countFallaEl.textContent = enFalla.length;
   countStandbyEl.textContent = enStandby.length;
