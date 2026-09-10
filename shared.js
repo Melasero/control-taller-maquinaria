@@ -34,6 +34,14 @@ export const OT_PLAN_COLLECTION = "otsPlan";
 
 export const STANDBY_ALERT_MS = 2 * 60 * 60 * 1000; // 2 horas
 
+// Campañas de repuestos planificados (ej. "Cambio de manguera hidráulica") —
+// al crear una campaña se genera un documento por cada volquete de la flota
+// (flotaVolquetes), cada uno con su propio estado "completada". Se cargan y
+// se marcan desde la pestaña "Campañas" del celular, o directo desde la TV
+// (columna "Campañas en Curso" y el tablero de volquetes). Independiente de
+// la colección "equipos".
+export const CAMPANAS_COLLECTION = "campanas";
+
 export const TIPOS_FALLA = ["Mecánica", "Eléctrica", "Hidráulica", "Soldadura", "Llantería", "Mantenimiento Preventivo", "Otro"];
 
 export const UBICACIONES_SUGERIDAS = ["Taller F", "Campo", "Punto G"];
