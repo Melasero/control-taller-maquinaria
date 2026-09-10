@@ -52,15 +52,15 @@
   .status .dot{ width:8px; height:8px; border-radius:50%; background: var(--green); flex-shrink:0; }
   .status.off .dot{ background: var(--red); }
 
-  .tabs{ display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr; gap:6px; margin-top:16px; }
+  .tabs{ display:flex; gap:6px; margin-top:16px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .tabs::-webkit-scrollbar{ display:none; }
   .tab{
-    padding:13px 6px; text-align:center;
+    flex:0 0 auto; padding:12px 14px; text-align:center; white-space:nowrap;
     background: var(--card); border:1px solid var(--border); border-radius:10px;
-    font-weight:700; font-size:12px; letter-spacing:0.02em; text-transform:uppercase;
+    font-weight:700; font-size:11px; letter-spacing:0.02em; text-transform:uppercase;
     color: var(--text-dim); cursor:pointer;
   }
   .tab.active{ background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-  .tab{ font-size:10.5px; padding:12px 4px; }
 
   main{ padding: 18px; }
   section{ display:none; }
@@ -215,6 +215,7 @@
     <div class="tab" data-tab="actualizar">Estado</div>
     <div class="tab" data-tab="observacion">Observación</div>
     <div class="tab" data-tab="plan">Plan</div>
+    <div class="tab" data-tab="campanas">Campañas</div>
     <div class="tab" data-tab="historial">Historial</div>
   </div>
 </header>
@@ -347,6 +348,25 @@
     <div class="empty" id="otEmpty" hidden>Sin OT cargadas para esta semana.</div>
   </section>
 
+  <section id="tab-campanas">
+    <div class="field">
+      <div class="hint">Una campaña es un repuesto o tarea planificada que se aplica a toda la flota. Al crearla se genera un pendiente para cada uno de los equipos de la lista de flota (pestaña Plan).</div>
+    </div>
+    <div class="field">
+      <label for="cNombre">Nombre de la campaña</label>
+      <input type="text" id="cNombre" placeholder="Ej. Cambio de manguera hidráulica" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="cDescripcion">Detalle / repuesto (opcional)</label>
+      <input type="text" id="cDescripcion" placeholder="Ej. Manguera 3/4 alta presión, lote 2026" autocomplete="off">
+    </div>
+    <button class="btn primary" id="btnCampana">Crear campaña para toda la flota</button>
+
+    <div class="m-divider">Campañas — toca una para ver el detalle por equipo</div>
+    <div id="campanaList"></div>
+    <div class="empty" id="campanaEmpty" hidden>Sin campañas creadas todavía.</div>
+  </section>
+
   <section id="tab-historial">
     <div class="field">
       <div class="hint">Registros ya cerrados (entregados o cerrados por reingreso). Búscalos para corregir datos mal cargados — equipo, empresa, fechas, horómetro, etc.</div>
@@ -375,10 +395,10 @@
 <script type="module">
 import { db } from "./firebase-init.js";
 import {
-  collection, addDoc, doc, updateDoc, setDoc, deleteDoc, onSnapshot, query, orderBy
+  collection, addDoc, doc, updateDoc, setDoc, deleteDoc, onSnapshot, query, orderBy, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import {
-  COLLECTION, ESTADOS, PRIORIDADES, PLAN_COLLECTION, PLAN_DOC, OBS_COLLECTION, OT_PLAN_COLLECTION,
+  COLLECTION, ESTADOS, PRIORIDADES, PLAN_COLLECTION, PLAN_DOC, OBS_COLLECTION, OT_PLAN_COLLECTION, CAMPANAS_COLLECTION,
   TIPOS_FALLA, UBICACIONES_SUGERIDAS, EMPRESAS_SUGERIDAS, formatHMS, formatDateTime,
   toDatetimeLocal, fromDatetimeLocal, isoWeekInfo
 } from "./shared.js";
@@ -586,9 +606,12 @@ onSnapshot(planRef, (snap) => {
   if (data && typeof data.avance === "number") {
     fPlanValor.value = data.avance;
   }
-  if (data && Array.isArray(data.flotaVolquetes) && document.activeElement !== fFlotaVolquetes) {
-    fFlotaVolquetes.value = data.flotaVolquetes.join("\n");
-    updateFlotaCount();
+  if (data && Array.isArray(data.flotaVolquetes)) {
+    flotaVolquetesActual = data.flotaVolquetes;
+    if (document.activeElement !== fFlotaVolquetes) {
+      fFlotaVolquetes.value = data.flotaVolquetes.join("\n");
+      updateFlotaCount();
+    }
   }
   if (data && data.actualizadoAt) {
     planUltimaEl.textContent = `Última actualización: ${formatDateTime(data.actualizadoAt)}`;
@@ -702,6 +725,116 @@ document.getElementById("btnOt").addEventListener("click", async () => {
     showToast("Error al guardar la OT: " + e.message, "var(--red)");
   }
 });
+
+// ---------- campañas de repuestos planificados (aplican a toda la flota) ----------
+let flotaVolquetesActual = [];
+let campanasDocs = [];
+const cNombreEl = document.getElementById("cNombre");
+const cDescripcionEl = document.getElementById("cDescripcion");
+const campanaListEl = document.getElementById("campanaList");
+const campanaEmptyEl = document.getElementById("campanaEmpty");
+
+function groupCampanasPorNombre(list) {
+  const map = {};
+  list.forEach((c) => {
+    if (!map[c.nombreCampana]) map[c.nombreCampana] = { nombre: c.nombreCampana, items: [] };
+    map[c.nombreCampana].items.push(c);
+  });
+  return Object.values(map).sort((a, b) => {
+    const aPend = a.items.some((i) => !i.completada);
+    const bPend = b.items.some((i) => !i.completada);
+    if (aPend !== bPend) return aPend ? -1 : 1;
+    return b.items[0].createdAt - a.items[0].createdAt;
+  });
+}
+
+function renderCampanaChecklist(g) {
+  const items = g.items.slice().sort((a, b) =>
+    a.completada === b.completada ? a.equipo.localeCompare(b.equipo, "es") : (a.completada ? 1 : -1)
+  );
+  const hechas = items.filter((i) => i.completada).length;
+  const desc = items[0] && items[0].descripcion;
+  const rows = items.map((it) => `
+    <label class="ot-item${it.completada ? " done" : ""}">
+      <input type="checkbox" ${it.completada ? "checked" : ""} data-camp-id="${it.id}">
+      <div class="ot-main"><div class="ot-eq">${it.equipo}</div></div>
+    </label>
+  `).join("");
+  abAction.innerHTML = `
+    ${desc ? `<div class="hint" style="margin-bottom:12px;">${desc}</div>` : ""}
+    <div class="hint" style="margin-bottom:12px;">${hechas}/${items.length} equipos completados — toca el check de cada uno al terminar</div>
+    <div class="edit-form" style="max-height:56vh;">${rows}</div>
+  `;
+  abAction.querySelectorAll("input[type=checkbox]").forEach((chk) => {
+    chk.addEventListener("change", async () => {
+      const completada = chk.checked;
+      try {
+        await updateDoc(doc(db, CAMPANAS_COLLECTION, chk.dataset.campId), {
+          completada,
+          completadaAt: completada ? Date.now() : null
+        });
+      } catch (e) {
+        showToast("Error al guardar: " + e.message, "var(--red)");
+        chk.checked = !completada;
+      }
+    });
+  });
+}
+
+function selectCampana(g) {
+  abName.textContent = g.nombre;
+  renderCampanaChecklist(g);
+  actionbar.classList.add("open");
+}
+
+function renderCampanaList() {
+  const grupos = groupCampanasPorNombre(campanasDocs);
+  campanaListEl.innerHTML = "";
+  campanaEmptyEl.hidden = grupos.length > 0;
+  grupos.forEach((g) => {
+    const total = g.items.length;
+    const hechas = g.items.filter((i) => i.completada).length;
+    const card = document.createElement("div");
+    card.className = "obs-eq-card";
+    card.innerHTML = `<div class="obs-eq-head">${g.nombre}<span>${hechas}/${total} hechas</span></div>`;
+    card.addEventListener("click", () => selectCampana(g));
+    campanaListEl.appendChild(card);
+  });
+}
+
+document.getElementById("btnCampana").addEventListener("click", async () => {
+  const nombreCampana = cNombreEl.value.trim();
+  const descripcion = cDescripcionEl.value.trim();
+  if (!nombreCampana) {
+    showToast("Escribe el nombre de la campaña", "var(--red)");
+    return;
+  }
+  if (flotaVolquetesActual.length === 0) {
+    showToast("No hay volquetes cargados en la flota (pestaña Plan)", "var(--red)");
+    return;
+  }
+  try {
+    const batch = writeBatch(db);
+    flotaVolquetesActual.forEach((equipo) => {
+      const ref = doc(collection(db, CAMPANAS_COLLECTION));
+      batch.set(ref, {
+        nombreCampana, descripcion, equipo,
+        completada: false, completadaAt: null, createdAt: Date.now()
+      });
+    });
+    await batch.commit();
+    showToast(`Campaña "${nombreCampana}" creada para ${flotaVolquetesActual.length} equipos`);
+    cNombreEl.value = "";
+    cDescripcionEl.value = "";
+  } catch (e) {
+    showToast("Error al crear la campaña: " + e.message, "var(--red)");
+  }
+});
+
+onSnapshot(collection(db, CAMPANAS_COLLECTION), (snap) => {
+  campanasDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  renderCampanaList();
+}, (err) => console.error(err));
 
 // ---------- actualizar estado ----------
 const eqListEl = document.getElementById("eqList");

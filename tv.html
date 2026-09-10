@@ -168,6 +168,7 @@
   .ind.red{ background: var(--red); box-shadow:0 0 0 4px var(--red-dim); }
   .ind.yellow{ background: var(--yellow); box-shadow:0 0 0 4px var(--yellow-dim); }
   .ind.green{ background: var(--green); box-shadow:0 0 0 4px var(--green-dim); }
+  .ind.blue{ background: var(--accent); box-shadow:0 0 0 4px var(--accent-dim); }
   .col-head h2{
     font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:12.5px; text-transform:uppercase;
     letter-spacing:0.03em; margin:0; line-height:1.2; color: var(--text-dim);
@@ -203,20 +204,21 @@
   }
 
   /* cuando hay pocos equipos en la lista, las tarjetas crecen para aprovechar el espacio libre */
-  #listFalla.roomy .card, #listStandby.roomy .card, #listObs.roomy .card{ padding:16px 20px; }
-  #listFalla.roomy .eq-name, #listStandby.roomy .eq-name, #listObs.roomy .eq-name{ font-size:19px; }
-  #listFalla.roomy .head-timer, #listStandby.roomy .head-timer{ font-size:20px; }
-  #listFalla.roomy .head-date, #listStandby.roomy .head-date, #listObs.roomy .head-date{ font-size:11.5px; }
+  #listFalla.roomy .card, #listObs.roomy .card, #listCampanas.roomy .card{ padding:16px 20px; }
+  #listFalla.roomy .eq-name, #listObs.roomy .eq-name, #listCampanas.roomy .eq-name{ font-size:19px; }
+  #listFalla.roomy .head-timer{ font-size:20px; }
+  #listFalla.roomy .head-date, #listObs.roomy .head-date, #listCampanas.roomy .head-date{ font-size:11.5px; }
   #listFalla.roomy .falla-desc{ font-size:14px; -webkit-line-clamp:2; margin-top:7px; }
-  #listFalla.roomy .meta-tag, #listStandby.roomy .meta-tag{ font-size:11px; padding:3px 9px; }
-  #listFalla.roomy .mini-meta, #listStandby.roomy .mini-meta{ margin-top:7px; }
-  #listObs.roomy .obs-list{ margin-top:9px; gap:8px; }
-  #listObs.roomy .obs-item{ font-size:14.5px; }
+  #listFalla.roomy .meta-tag{ font-size:11px; padding:3px 9px; }
+  #listFalla.roomy .mini-meta{ margin-top:7px; }
+  #listObs.roomy .obs-list, #listCampanas.roomy .obs-list{ margin-top:9px; gap:8px; }
+  #listObs.roomy .obs-item, #listCampanas.roomy .obs-item{ font-size:14.5px; }
   #listObs.roomy .hm-tag{ font-size:12px; }
   .card:hover{ border-color: var(--text-faint); }
   .card:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
   .card.red{ border-left:3px solid var(--red-line); }
   .card.yellow{ border-left:3px solid var(--yellow-line); }
+  .card.blue{ border-left:3px solid var(--accent); }
   .card.green{ border-left:3px solid var(--green-line); }
   .card.critico{
     border-left:4px solid #f43f5e !important;
@@ -346,6 +348,7 @@
   }
   .modal-state.red{ background: var(--red-dim); color: var(--red); }
   .modal-state.yellow{ background: var(--yellow-dim); color: var(--yellow); }
+  .modal-state.blue{ background: var(--accent-dim); color: var(--accent); }
   .modal-state.green{ background: var(--green-dim); color: var(--green); }
   .modal-meta{ font-size:13px; color: var(--text-dim); text-transform:uppercase; letter-spacing:0.03em; margin-top:8px; }
   .modal-meta .sep{ color: var(--text-faint); margin:0 5px; }
@@ -464,7 +467,23 @@
     padding:13px 6px; border-bottom:1px solid #1a1a1a; font-family:'IBM Plex Mono', monospace;
   }
   .board-row .b-code{ font-weight:800; font-size:18px; color:#f5f5f5; letter-spacing:0.03em; }
+  .board-row .b-mid{ display:flex; align-items:center; gap:8px; min-width:0; }
   .board-row .b-tipo{ font-size:11px; color:#6b7280; text-transform:uppercase; letter-spacing:0.06em; }
+  .board-row .b-camp{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; font-weight:700; color: var(--accent);
+    background: var(--accent-dim); padding:2px 7px; border-radius:999px; white-space:nowrap; flex-shrink:0;
+  }
+
+  .board-campanas-strip{
+    grid-column: 1 / -1; display:flex; flex-wrap:wrap; gap:8px; padding:2px 6px 16px; border-bottom:1px solid #262626; margin-bottom:6px;
+  }
+  .board-campana-chip{
+    display:flex; align-items:center; gap:8px; font-family:'IBM Plex Mono', monospace; font-size:11.5px;
+    background: var(--accent-dim); border:1px solid rgba(94,200,245,0.3); color: var(--accent);
+    padding:6px 12px; border-radius:999px;
+  }
+  .board-campana-chip .bc-nombre{ font-weight:700; text-transform:uppercase; letter-spacing:0.03em; }
+  .board-campana-chip .bc-progreso{ color:#8fa0b3; }
   .board-row .b-status{
     font-size:11.5px; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; padding:5px 12px;
     border-radius:4px; white-space:nowrap; justify-self:end;
@@ -565,11 +584,11 @@
   </div>
   <div class="column">
     <div class="col-head">
-      <div class="label"><span class="ind green"></span><h2>Standby / Operativos en Taller</h2></div>
-      <div class="count" id="countStandby">0</div>
+      <div class="label"><span class="ind blue"></span><h2>Campañas en Curso</h2></div>
+      <div class="count" id="countCampanas">0</div>
     </div>
     <div class="col-stat-hoy" id="entregadosHoyStat">0 entregados hoy</div>
-    <div class="list" id="listStandby"></div>
+    <div class="list" id="listCampanas"></div>
   </div>
 </div>
 
@@ -595,7 +614,7 @@ import {
   collection, doc, onSnapshot, query, orderBy, updateDoc, writeBatch, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import {
-  ESTADOS, PRIORIDADES, STANDBY_ALERT_MS, PLAN_COLLECTION, PLAN_DOC, OBS_COLLECTION, OT_PLAN_COLLECTION,
+  ESTADOS, PRIORIDADES, PLAN_COLLECTION, PLAN_DOC, OBS_COLLECTION, OT_PLAN_COLLECTION, CAMPANAS_COLLECTION,
   formatHMS, formatHM, formatTime, formatDateTime, isoWeekInfo
 } from "./shared.js";
 
@@ -624,11 +643,11 @@ function mostrarToast(msg){
 }
 
 const listFallaEl = document.getElementById("listFalla");
-const listStandbyEl = document.getElementById("listStandby");
 const listObsEl = document.getElementById("listObs");
+const listCampanasEl = document.getElementById("listCampanas");
 const countFallaEl = document.getElementById("countFalla");
-const countStandbyEl = document.getElementById("countStandby");
 const countObsEl = document.getElementById("countObs");
+const countCampanasEl = document.getElementById("countCampanas");
 const metricFallaEl = document.getElementById("metricFalla");
 const metricMttrEl = document.getElementById("metricMttr");
 function renderMttr(){
@@ -842,26 +861,6 @@ function buildFallaCard(v){
   return card;
 }
 
-function buildStandbyCard(v){
-  const card = document.createElement("div");
-  card.className = "card green" + (isCritico(v) ? " critico" : "");
-  card.dataset.id = v.id;
-  card.innerHTML = `
-    <div class="card-head">
-      <div class="card-head-left">
-        <div class="eq-name-row">${equipoIcon(v.equipo)}<div class="eq-name">${v.equipo}</div>${criticoMini(v)}${hmTag(v)}${statsBadge(v)}</div>
-      </div>
-      <div class="card-head-right">
-        <div class="head-date">Operativo ${formatDateTime(v.operativoAt)}</div>
-        <div class="head-timer" data-role="timer"></div>
-      </div>
-    </div>
-    ${miniMeta(v.empresa, v.ubicacion)}
-    <div class="alert-badge" data-role="alert" hidden>Sin recoger +2h</div>
-  `;
-  card.addEventListener("click", () => openModal(v, "green", "Standby"));
-  return card;
-}
 
 function buildObsCard(g){
   const card = document.createElement("div");
@@ -1049,20 +1048,39 @@ function renderBoardHoras(){
   boardOverlayHoursEl.textContent = `⏳ ${formatHM(totalMs)} acumuladas (${enMtto.length})`;
 }
 
+function campanasPendientesDe(code){
+  return campanasDocs.filter(c => c.equipo === code && !c.completada).length;
+}
+
+function campanaSummaryHtml(){
+  const pendientes = campanasDocs.filter(c => !c.completada);
+  const nombres = {};
+  pendientes.forEach(c => { nombres[c.nombreCampana] = (nombres[c.nombreCampana] || 0) + 1; });
+  const entries = Object.entries(nombres);
+  if(entries.length === 0) return "";
+  const total = flotaVolquetes.length;
+  const chips = entries.map(([nombre, n]) => `
+    <div class="board-campana-chip"><span class="bc-nombre">${nombre}</span><span class="bc-progreso">${total - n}/${total} hechas</span></div>
+  `).join("");
+  return `<div class="board-campanas-strip">${chips}</div>`;
+}
+
 function openFlotaFullscreen(){
   planModalOpen = false;
   const items = flotaVolquetes.slice().sort((a,b) => a.localeCompare(b, "es"));
   const enMtto = items.filter(code => fallaActualDe(code)).length;
   boardOverlaySubEl.textContent = `${items.length - enMtto}/${items.length} OPERATIVOS · ${enMtto} EN MANTENIMIENTO`;
 
-  boardOverlayGridEl.innerHTML = items.map(code => {
+  const filas = items.map(code => {
     const v = fallaActualDe(code);
     const tipo = tipoEquipoDe(code);
+    const nCamp = campanasPendientesDe(code);
+    const campBadge = nCamp > 0 ? `<span class="b-camp" title="${nCamp} campaña${nCamp === 1 ? "" : "s"} pendiente${nCamp === 1 ? "" : "s"}">&#128295;${nCamp}</span>` : "";
     if(v){
       return `
         <div class="board-row mtto" data-id="${v.id}">
           <span class="b-code">${code}</span>
-          <span class="b-tipo">${tipo.singular}</span>
+          <span class="b-mid"><span class="b-tipo">${tipo.singular}</span>${campBadge}</span>
           <span class="b-status">${v.tipoFalla || "En mantenimiento"}</span>
         </div>
       `;
@@ -1070,11 +1088,13 @@ function openFlotaFullscreen(){
     return `
       <div class="board-row op">
         <span class="b-code">${code}</span>
-        <span class="b-tipo">${tipo.singular}</span>
+        <span class="b-mid"><span class="b-tipo">${tipo.singular}</span>${campBadge}</span>
         <span class="b-status">Operativo</span>
       </div>
     `;
   }).join("");
+
+  boardOverlayGridEl.innerHTML = campanaSummaryHtml() + filas;
 
   boardOverlayGridEl.querySelectorAll(".board-row.mtto").forEach(row => {
     row.addEventListener("click", () => {
@@ -1221,17 +1241,14 @@ function render(){
     .sort((a,b) => (isCritico(b) - isCritico(a)) || (b.operativoAt - a.operativoAt));
 
   countFallaEl.textContent = enFalla.length;
-  countStandbyEl.textContent = enStandby.length;
   metricFallaEl.textContent = enFalla.length;
   metricStandbyEl.textContent = enStandby.length;
 
   // pocas tarjetas en la lista -> las agranda para aprovechar el espacio libre;
   // apenas vuelven a ser ~5 o más, regresa sola al tamaño compacto.
   listFallaEl.classList.toggle("roomy", enFalla.length > 0 && enFalla.length <= 4);
-  listStandbyEl.classList.toggle("roomy", enStandby.length > 0 && enStandby.length <= 4);
 
   renderList(listFallaEl, enFalla, buildFallaCard, "Sin equipos en mantenimiento.");
-  renderList(listStandbyEl, enStandby, buildStandbyCard, "Sin equipos en standby.");
 
   renderPlanSub();
   renderVolquetesGauge();
@@ -1247,14 +1264,6 @@ function tickTimers(){
     if(v.estado === ESTADOS.REPARACION){
       const timerEl = node.querySelector('[data-role="timer"]');
       if(timerEl) timerEl.textContent = formatHMS(Date.now() - v.ingresoAt);
-    } else if(v.estado === ESTADOS.STANDBY){
-      const elapsed = Date.now() - v.operativoAt;
-      const timerEl = node.querySelector('[data-role="timer"]');
-      const alertEl = node.querySelector('[data-role="alert"]');
-      if(timerEl) timerEl.textContent = formatHMS(elapsed);
-      const isAlert = elapsed > STANDBY_ALERT_MS;
-      node.classList.toggle("alert", isAlert);
-      if(alertEl) alertEl.hidden = !isAlert;
     }
   });
   if(boardOverlayEl.classList.contains("open")) renderBoardHoras();
@@ -1284,6 +1293,85 @@ const qObs = query(collection(db, OBS_COLLECTION), orderBy("createdAt", "desc"))
 onSnapshot(qObs, (snap) => {
   obsDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   renderObs();
+}, (err) => console.error(err));
+
+// ---------- campañas en curso (repuestos planificados, agrupadas por equipo) ----------
+let campanasDocs = [];
+
+function groupCampanas(list){
+  const pending = list.filter(c => !c.completada);
+  const map = {};
+  pending.forEach(c => {
+    if(!map[c.equipo]) map[c.equipo] = { id: "camp-" + c.equipo, equipo: c.equipo, lastAt: 0, items: [] };
+    const g = map[c.equipo];
+    g.items.push({ id: c.id, nombreCampana: c.nombreCampana, descripcion: c.descripcion });
+    if(c.createdAt > g.lastAt) g.lastAt = c.createdAt;
+  });
+  return Object.values(map).sort((a,b) => a.equipo.localeCompare(b.equipo, "es"));
+}
+
+function buildCampanaCard(g){
+  const card = document.createElement("div");
+  card.className = "card blue";
+  card.dataset.id = g.id;
+  const itemsHtml = g.items.map(it => `<div class="obs-item"><span class="bullet">&#9679;</span><span>${it.nombreCampana}${it.descripcion ? " — " + it.descripcion : ""}</span></div>`).join("");
+  card.innerHTML = `
+    <div class="card-head">
+      <div class="card-head-left">
+        <div class="eq-name-row">${equipoIcon(g.equipo)}<div class="eq-name">${g.equipo}</div></div>
+      </div>
+      <div class="card-head-right"><div class="head-date">${g.items.length} pendiente${g.items.length === 1 ? "" : "s"}</div></div>
+    </div>
+    <div class="obs-list">${itemsHtml}</div>
+  `;
+  card.addEventListener("click", () => openCampanaModal(g));
+  return card;
+}
+
+function openCampanaModal(g){
+  planModalOpen = false;
+  const itemsHtml = g.items.map(it => `
+    <div class="obs-item clickable" data-item-id="${it.id}">
+      <span class="obs-check"></span>
+      <span class="obs-text">${it.nombreCampana}${it.descripcion ? " — " + it.descripcion : ""}</span>
+    </div>
+  `).join("");
+  modalBox.innerHTML = `
+    <div class="modal-head">
+      <div><div class="modal-eq-row">${equipoIcon(g.equipo)}<div class="modal-eq">${g.equipo}</div></div></div>
+      <span class="modal-state blue">Campañas pendientes</span>
+    </div>
+    <div class="modal-meta">${g.items.length} campaña${g.items.length === 1 ? "" : "s"} pendiente${g.items.length === 1 ? "" : "s"}</div>
+    <div class="modal-meta" style="margin-top:2px;">Toca una para marcarla realizada</div>
+    <div class="obs-list" style="margin-top:16px;">${itemsHtml}</div>
+  `;
+  modalBox.querySelectorAll(".obs-item.clickable").forEach(itemEl => {
+    itemEl.addEventListener("click", () => {
+      if(itemEl.classList.contains("resolviendo")) return;
+      const itemId = itemEl.dataset.itemId;
+      const texto = itemEl.querySelector(".obs-text").textContent;
+      itemEl.classList.add("resolviendo");
+      mostrarToast(`Campaña realizada — ${g.equipo}: ${texto}`);
+      setTimeout(() => {
+        if(itemEl.parentNode) itemEl.remove();
+        if(!modalBox.querySelector(".obs-item")) closeModal();
+      }, 260);
+      updateDoc(doc(db, CAMPANAS_COLLECTION, itemId), { completada: true, completadaAt: Date.now() }).catch(err => console.error(err));
+    });
+  });
+  modalBackdrop.classList.add("open");
+}
+
+function renderCampanas(){
+  const grouped = groupCampanas(campanasDocs);
+  countCampanasEl.textContent = grouped.length;
+  listCampanasEl.classList.toggle("roomy", grouped.length > 0 && grouped.length <= 4);
+  renderList(listCampanasEl, grouped, buildCampanaCard, "Sin campañas pendientes.");
+}
+const qCampanas = query(collection(db, CAMPANAS_COLLECTION), orderBy("createdAt", "desc"));
+onSnapshot(qCampanas, (snap) => {
+  campanasDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderCampanas();
 }, (err) => console.error(err));
 
 // ---------- avance del plan semanal (con selector de semana) ----------
