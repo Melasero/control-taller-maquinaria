@@ -95,6 +95,29 @@
   .split-half.rep .m-num{ color: var(--red); }
   .split-half.sby .m-ind{ background: var(--green); box-shadow:0 0 0 5px var(--green-dim); }
   .split-half.sby .m-num{ color: var(--green); }
+  /* desglose por tipo de equipo (6 volquetes / 2 excavadoras / ...) entre Reparación y Standby */
+  .split-tipos{
+    margin-left:auto; padding:0 6px; text-align:center; height:42px; overflow:hidden;
+    display:flex; flex-direction:column;
+    font-size:11.5px; font-weight:800; line-height:14px; letter-spacing:0.03em; text-transform:uppercase; color: var(--red);
+  }
+  .split-tipos-inner{ margin:auto 0; }
+  /* más de 3 tipos: la lista sube y baja sola, lento, dentro del mismo alto de 3 líneas */
+  .split-tipos-inner.scroll{ margin:0; animation: tiposPingPong 10s ease-in-out infinite; }
+  .split-tipos.scrolling{
+    -webkit-mask-image: linear-gradient(transparent 0, #000 5px, #000 calc(100% - 5px), transparent 100%);
+    mask-image: linear-gradient(transparent 0, #000 5px, #000 calc(100% - 5px), transparent 100%);
+  }
+  @keyframes tiposPingPong{
+    0%, 15%{ transform: translateY(0); }
+    50%, 65%{ transform: translateY(var(--tipos-shift, 0px)); }
+    100%{ transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .split-tipos{ overflow-y:auto; scrollbar-width:none; }
+    .split-tipos-inner.scroll{ animation:none !important; margin:0; }
+    .split-tipos.scrolling{ -webkit-mask-image:none; mask-image:none; }
+  }
 
   .mttr-ind{ background: var(--accent); box-shadow:0 0 0 5px var(--accent-dim); }
   .mttr-num{ color: var(--accent); }
@@ -521,6 +544,7 @@
     <div class="split-half rep" id="fallaResumenCard" title="Ver el detalle por tipo de equipo">
       <span class="m-ind"></span>
       <div><div class="m-num" id="metricFalla">0</div><div class="m-label">Reparación</div></div>
+      <div class="split-tipos" id="fallaTipos"></div>
     </div>
     <div class="split-divider"></div>
     <div class="split-half sby" id="standbyResumenCard" title="Ver los equipos entregados en este turno">
@@ -649,6 +673,43 @@ const countFallaEl = document.getElementById("countFalla");
 const countObsEl = document.getElementById("countObs");
 const countCampanasEl = document.getElementById("countCampanas");
 const metricFallaEl = document.getElementById("metricFalla");
+const fallaTiposEl = document.getElementById("fallaTipos");
+// Nombres cortos (singular, plural) para el desglose compacto de la tarjeta Reparación.
+const TIPO_CORTO = {
+  CV: ["Volquete", "Volquetes"], CA: ["Cisterna", "Cisternas"], CT: ["Tracto", "Tractos"],
+  CL: ["Lubricador", "Lubricadores"], EX: ["Excavadora", "Excavadoras"], RO: ["Rodillo", "Rodillos"],
+  MC: ["Montacargas", "Montacargas"]
+};
+let fallaTiposKey = "";
+function renderFallaTipos(enFalla){
+  const counts = {};
+  enFalla.forEach(v => {
+    const code = TIPO_CORTO[prefijoDe(v.equipo)] ? prefijoDe(v.equipo) : "OTRO";
+    counts[code] = (counts[code] || 0) + 1;
+  });
+  const etiqueta = (code, n) => (TIPO_CORTO[code] || ["Otro", "Otros"])[n === 1 ? 0 : 1];
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+  // no reconstruir si nada cambió, para que el scroll automático no se reinicie en cada snapshot
+  const key = JSON.stringify(entries);
+  if(key === fallaTiposKey) return;
+  fallaTiposKey = key;
+
+  fallaTiposEl.classList.remove("scrolling");
+  if(entries.length === 0){ fallaTiposEl.innerHTML = ""; return; }
+  fallaTiposEl.innerHTML = `<div class="split-tipos-inner">${entries.map(([code, n]) => `<div>${n} ${etiqueta(code, n)}</div>`).join("")}</div>`;
+
+  // hasta 3 tipos caben quietos; con más, sube y baja lento dentro de la misma altura
+  const inner = fallaTiposEl.firstElementChild;
+  const overflow = inner.offsetHeight - fallaTiposEl.clientHeight;
+  if(overflow > 1){
+    const moveSec = Math.max(3, overflow / 10);           // ~10 px/s, mínimo 3 s por tramo
+    inner.style.setProperty("--tipos-shift", `-${overflow}px`);
+    inner.style.animationDuration = `${(moveSec / 0.35).toFixed(1)}s`;
+    inner.classList.add("scroll");
+    fallaTiposEl.classList.add("scrolling");
+  }
+}
 const metricMttrEl = document.getElementById("metricMttr");
 function renderMttr(){
   const hace30d = Date.now() - 30 * 86400000;
@@ -1242,6 +1303,7 @@ function render(){
 
   countFallaEl.textContent = enFalla.length;
   metricFallaEl.textContent = enFalla.length;
+  renderFallaTipos(enFalla);
   metricStandbyEl.textContent = enStandby.length;
 
   // pocas tarjetas en la lista -> las agranda para aprovechar el espacio libre;
