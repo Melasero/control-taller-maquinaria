@@ -6,6 +6,9 @@
 <title>Taller Móvil</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/jspdf.plugin.autotable.min.js"></script>
 <style>
   :root{
     --bg: #0a0e13;
@@ -107,6 +110,14 @@
     border:1px dashed var(--border); border-radius:10px;
   }
 
+  .hist-export-row{ display:flex; gap:10px; margin:-2px 0 16px; }
+  .hist-export-btn{
+    flex:1; background: var(--card); border:1px solid var(--border); border-radius:10px;
+    color: var(--text); font-size:13px; font-weight:700; padding:12px 8px; letter-spacing:0.02em;
+  }
+  .hist-export-btn:active{ background: var(--card-2); }
+  .hist-export-btn:disabled{ opacity:0.5; }
+
   .eq-list{ display:flex; flex-direction:column; gap:10px; }
   .eq-card{
     background: var(--card); border:1px solid var(--border); border-left:4px solid var(--border);
@@ -170,8 +181,23 @@
   .obs-eq-card{ background: var(--card); border:1px solid var(--border); border-radius:10px; padding:13px 14px; margin-bottom:10px; }
   .obs-eq-head{ font-weight:700; font-size:15px; }
   .obs-eq-head span{ font-weight:400; font-size:11px; color: var(--text-faint); text-transform:uppercase; margin-left:6px; }
-  .obs-item{ display:flex; align-items:flex-start; gap:9px; font-size:13.5px; line-height:1.45; margin-top:10px; color: var(--text); }
+  .obs-item{ display:flex; align-items:flex-start; gap:9px; font-size:13.5px; line-height:1.45; color: var(--text); flex:1; min-width:0; }
   .obs-item input{ width:19px; height:19px; margin-top:1px; flex-shrink:0; accent-color: var(--accent); }
+  .obs-item-row{ display:flex; align-items:flex-start; gap:4px; margin-top:10px; }
+  .obs-edit-btn{
+    background:none; border:none; padding:3px 5px; font-size:14px; line-height:1.4; cursor:pointer;
+    color: var(--text-faint); flex-shrink:0;
+  }
+  .obs-edit-btn:hover{ color: var(--accent); }
+  .obs-add-btn{ color: var(--accent); }
+  .obs-edit-form{ display:flex; gap:8px; align-items:center; flex:1; }
+  .obs-edit-form input[type=text]{ flex:1; padding:10px 12px; }
+  .obs-edit-form button{
+    background:none; border:none; font-size:17px; line-height:1; cursor:pointer; padding:4px 6px; flex-shrink:0;
+  }
+  .obs-edit-form .obs-save{ color: var(--green); }
+  .obs-edit-form .obs-add{ color: var(--accent); }
+  .obs-edit-form .obs-cancel{ color: var(--text-faint); }
 
   .ot-item{
     display:flex; gap:10px; align-items:flex-start; background: rgba(251,191,36,0.08);
@@ -201,6 +227,41 @@
     max-width: calc(100vw - 40px);
   }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .eq-picker-overlay{
+    position:fixed; inset:0; background: var(--bg); z-index:40;
+    display:flex; flex-direction:column;
+    transform: translateY(100%); transition: transform .22s ease;
+  }
+  .eq-picker-overlay.open{ transform: translateY(0); }
+  .eq-picker-head{
+    display:flex; align-items:center; justify-content:space-between; padding:18px 18px 0; flex-shrink:0;
+  }
+  .eq-picker-title{ font-weight:800; font-size:17px; }
+  .eq-picker-close{ background:none; border:none; color: var(--text-faint); font-size:26px; line-height:1; padding:2px 6px; }
+  .eq-picker-actions{ display:flex; gap:10px; padding:12px 18px 4px; flex-shrink:0; }
+  .eq-picker-actions button{
+    flex:1; background: var(--card); border:1px solid var(--border); border-radius:8px;
+    color: var(--text-dim); font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.02em;
+    padding:9px 6px;
+  }
+  .eq-picker-list{ flex:1; overflow-y:auto; padding:10px 18px 18px; }
+  .eq-picker-group-title{
+    font-size:11px; font-weight:700; color: var(--text-faint); text-transform:uppercase; letter-spacing:0.05em;
+    padding:14px 2px 6px; border-top:1px solid var(--border); margin-top:2px;
+  }
+  .eq-picker-group-title:first-child{ border-top:none; margin-top:0; padding-top:0; }
+  .eq-picker-item{
+    display:flex; align-items:center; gap:10px; padding:11px 6px; border-bottom:1px solid var(--border);
+    font-size:14px; color: var(--text);
+  }
+  .eq-picker-item input{ width:20px; height:20px; flex-shrink:0; accent-color: var(--accent); }
+  .eq-picker-footer{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:14px 18px; border-top:1px solid var(--border); flex-shrink:0; background: var(--panel);
+  }
+  .eq-picker-footer span{ font-size:12.5px; color: var(--text-dim); white-space:nowrap; }
+  .eq-picker-footer .btn{ width:auto; padding:12px 20px; }
 </style>
 </head>
 <body>
@@ -213,6 +274,7 @@
   <div class="tabs">
     <div class="tab active" data-tab="ingreso">Ingreso</div>
     <div class="tab" data-tab="actualizar">Estado</div>
+    <div class="tab" data-tab="standby">Standby</div>
     <div class="tab" data-tab="observacion">Observación</div>
     <div class="tab" data-tab="plan">Plan</div>
     <div class="tab" data-tab="campanas">Campañas</div>
@@ -268,6 +330,33 @@
     </div>
     <div class="eq-list" id="eqList"></div>
     <div class="empty" id="eqEmpty" hidden>No hay equipos en taller.</div>
+  </section>
+
+  <section id="tab-standby">
+    <div class="field">
+      <div class="hint">Lista propia de equipos en standby, independiente del flujo de reparación — agrégalos aquí y quítalos con el check cuando el operador los recoja.</div>
+    </div>
+    <div class="field">
+      <label for="sbEquipo">Equipo</label>
+      <input type="text" id="sbEquipo" placeholder="Ej. CV-00470" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="sbEmpresa">Empresa</label>
+      <input type="text" id="sbEmpresa" list="empresas" placeholder="Ej. MD, ST, OR, Komatsu…" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="sbUbicacion">Ubicación (opcional)</label>
+      <input type="text" id="sbUbicacion" list="ubicaciones" placeholder="Ej. Taller F" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="sbNota">Nota (opcional)</label>
+      <input type="text" id="sbNota" placeholder="Ej. Esperando grúa para trasladarlo" autocomplete="off">
+    </div>
+    <button class="btn primary" id="btnStandby">Agregar a Standby</button>
+
+    <div class="m-divider">En standby — toca el check al recogerlo</div>
+    <div id="standbyList"></div>
+    <div class="empty" id="standbyEmpty" hidden>Sin equipos en standby.</div>
   </section>
 
   <section id="tab-observacion">
@@ -361,6 +450,7 @@
       <input type="text" id="cDescripcion" placeholder="Ej. Manguera 3/4 alta presión, lote 2026" autocomplete="off">
     </div>
     <button class="btn primary" id="btnCampana">Crear campaña para toda la flota</button>
+    <button class="btn primary" id="btnCampanaPersonalizada" style="margin-top:10px; background:var(--card-2); color:var(--accent); border:1px solid var(--accent);">Crear campaña personalizada</button>
 
     <div class="m-divider">Campañas — toca una para ver el detalle por equipo</div>
     <div id="campanaList"></div>
@@ -373,6 +463,10 @@
     </div>
     <div class="field search">
       <input type="text" id="hBuscar" placeholder="Buscar por equipo o empresa…" autocomplete="off">
+    </div>
+    <div class="hist-export-row">
+      <button type="button" class="hist-export-btn" id="btnExportExcel">📊 Exportar Excel</button>
+      <button type="button" class="hist-export-btn" id="btnExportPdf">📄 Exportar PDF</button>
     </div>
     <div class="eq-list" id="hList"></div>
     <div class="empty" id="hEmpty" hidden>No se encontraron registros cerrados.</div>
@@ -392,6 +486,25 @@
 
 <div class="toast" id="toast"></div>
 
+<div class="eq-picker-overlay" id="eqPickerOverlay">
+  <div class="eq-picker-head">
+    <div class="eq-picker-title">Elegir equipos</div>
+    <button type="button" class="eq-picker-close" id="eqPickerClose" aria-label="Cerrar">&times;</button>
+  </div>
+  <div class="field search" style="padding:0 18px; margin-top:14px;">
+    <input type="text" id="eqPickerBuscar" placeholder="Buscar por código o tipo…" autocomplete="off">
+  </div>
+  <div class="eq-picker-actions">
+    <button type="button" id="eqPickerTodos">Marcar todos (filtrados)</button>
+    <button type="button" id="eqPickerNinguno">Quitar todos</button>
+  </div>
+  <div class="eq-picker-list" id="eqPickerList"></div>
+  <div class="eq-picker-footer">
+    <span id="eqPickerCount">0 seleccionados</span>
+    <button class="btn primary" id="eqPickerConfirmar">Crear campaña</button>
+  </div>
+</div>
+
 <script type="module">
 import { db } from "./firebase-init.js";
 import {
@@ -399,6 +512,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import {
   COLLECTION, ESTADOS, PRIORIDADES, PLAN_COLLECTION, PLAN_DOC, OBS_COLLECTION, OT_PLAN_COLLECTION, CAMPANAS_COLLECTION,
+  STANDBY_LIST_COLLECTION,
   TIPOS_FALLA, UBICACIONES_SUGERIDAS, EMPRESAS_SUGERIDAS, formatHMS, formatDateTime,
   toDatetimeLocal, fromDatetimeLocal, isoWeekInfo
 } from "./shared.js";
@@ -536,6 +650,118 @@ document.getElementById("btnObs").addEventListener("click", async () => {
 const obsPendListEl = document.getElementById("obsPendList");
 const obsPendEmptyEl = document.getElementById("obsPendEmpty");
 
+function renderObsRow(rowEl, nota) {
+  rowEl.innerHTML = `
+    <label class="obs-item">
+      <input type="checkbox" data-obs-id="${nota.id}">
+      <span class="obs-text">${nota.texto}</span>
+    </label>
+    <button type="button" class="obs-edit-btn" data-obs-id="${nota.id}" aria-label="Editar observación">&#9998;</button>
+    <button type="button" class="obs-edit-btn obs-add-btn" data-obs-id="${nota.id}" aria-label="Agregar otra observación">&#43;</button>
+  `;
+  rowEl.querySelector("input[type=checkbox]").addEventListener("change", async (e) => {
+    if (!e.target.checked) return;
+    try {
+      await deleteDoc(doc(db, OBS_COLLECTION, nota.id));
+    } catch (err) {
+      showToast("Error al resolver: " + err.message, "var(--red)");
+      e.target.checked = false;
+    }
+  });
+  rowEl.querySelector(".obs-edit-btn").addEventListener("click", () => startObsEdit(rowEl, nota));
+  rowEl.querySelector(".obs-add-btn").addEventListener("click", () => {
+    const newRow = document.createElement("div");
+    newRow.className = "obs-item-row";
+    rowEl.after(newRow);
+    startObsAdd(newRow, nota);
+  });
+}
+
+function startObsEdit(rowEl, nota) {
+  rowEl.innerHTML = `
+    <div class="obs-edit-form">
+      <input type="text" value="${nota.texto.replace(/"/g, "&quot;")}" autocomplete="off">
+      <button type="button" class="obs-save" aria-label="Guardar">&#10003;</button>
+      <button type="button" class="obs-add" aria-label="Agregar otra observación">&#43;</button>
+      <button type="button" class="obs-cancel" aria-label="Cancelar">&#10005;</button>
+    </div>
+  `;
+  const input = rowEl.querySelector("input[type=text]");
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+
+  const cancel = () => renderObsRow(rowEl, nota);
+  const save = async () => {
+    const texto = input.value.trim();
+    if (!texto) {
+      showToast("La observación no puede quedar vacía", "var(--red)");
+      return;
+    }
+    try {
+      await updateDoc(doc(db, OBS_COLLECTION, nota.id), { texto });
+      showToast("Observación actualizada");
+    } catch (e) {
+      showToast("Error al guardar: " + e.message, "var(--red)");
+      cancel();
+    }
+  };
+  rowEl.querySelector(".obs-save").addEventListener("click", save);
+  rowEl.querySelector(".obs-cancel").addEventListener("click", cancel);
+  rowEl.querySelector(".obs-add").addEventListener("click", () => {
+    const newRow = document.createElement("div");
+    newRow.className = "obs-item-row";
+    rowEl.after(newRow);
+    cancel();
+    startObsAdd(newRow, nota);
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") save();
+    if (e.key === "Escape") cancel();
+  });
+}
+
+function startObsAdd(rowEl, contextNota) {
+  rowEl.innerHTML = `
+    <div class="obs-edit-form">
+      <input type="text" placeholder="Nueva observación…" autocomplete="off">
+      <button type="button" class="obs-save" aria-label="Guardar">&#10003;</button>
+      <button type="button" class="obs-cancel" aria-label="Cancelar">&#10005;</button>
+    </div>
+  `;
+  const input = rowEl.querySelector("input[type=text]");
+  input.focus();
+
+  const cancel = () => rowEl.remove();
+  const save = async () => {
+    const texto = input.value.trim();
+    if (!texto) {
+      showToast("Escribe la observación", "var(--red)");
+      return;
+    }
+    try {
+      await addDoc(collection(db, OBS_COLLECTION), {
+        equipo: contextNota.equipo,
+        empresa: contextNota.empresa,
+        ubicacion: contextNota.ubicacion || "",
+        horometro: contextNota.horometro != null ? contextNota.horometro : null,
+        texto,
+        resuelta: false,
+        createdAt: Date.now()
+      });
+      showToast(`Observación agregada a ${contextNota.equipo}`);
+      // el listener en tiempo real vuelve a pintar la lista completa; esta fila suelta se descarta sola
+    } catch (e) {
+      showToast("Error al guardar: " + e.message, "var(--red)");
+    }
+  };
+  rowEl.querySelector(".obs-save").addEventListener("click", save);
+  rowEl.querySelector(".obs-cancel").addEventListener("click", cancel);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") save();
+    if (e.key === "Escape") cancel();
+  });
+}
+
 function renderObsPend(obsList) {
   const pending = obsList.filter(o => !o.resuelta);
   const grouped = {};
@@ -552,25 +778,12 @@ function renderObsPend(obsList) {
     const card = document.createElement("div");
     card.className = "obs-eq-card";
     const metaTxt = [g.empresa, g.ubicacion].filter(Boolean).join(" · ");
-    card.innerHTML = `
-      <div class="obs-eq-head">${g.equipo}${metaTxt ? `<span>${metaTxt}</span>` : ""}</div>
-      ${g.notas.map(n => `
-        <label class="obs-item">
-          <input type="checkbox" data-obs-id="${n.id}">
-          <span>${n.texto}</span>
-        </label>
-      `).join("")}
-    `;
-    card.querySelectorAll("input[type=checkbox]").forEach(chk => {
-      chk.addEventListener("change", async () => {
-        if (!chk.checked) return;
-        try {
-          await deleteDoc(doc(db, OBS_COLLECTION, chk.dataset.obsId));
-        } catch (e) {
-          showToast("Error al resolver: " + e.message, "var(--red)");
-          chk.checked = false;
-        }
-      });
+    card.innerHTML = `<div class="obs-eq-head">${g.equipo}${metaTxt ? `<span>${metaTxt}</span>` : ""}</div>`;
+    g.notas.forEach(n => {
+      const row = document.createElement("div");
+      row.className = "obs-item-row";
+      card.appendChild(row);
+      renderObsRow(row, n);
     });
     obsPendListEl.appendChild(card);
   });
@@ -580,6 +793,66 @@ const qObs = query(collection(db, OBS_COLLECTION), orderBy("createdAt", "desc"))
 onSnapshot(qObs, (snap) => {
   const obsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   renderObsPend(obsList);
+}, (err) => console.error(err));
+
+// ---------- standby manual (lista independiente, no depende del estado "standby") ----------
+document.getElementById("btnStandby").addEventListener("click", async () => {
+  const equipo = document.getElementById("sbEquipo").value.trim();
+  const empresa = document.getElementById("sbEmpresa").value.trim();
+  const ubicacion = document.getElementById("sbUbicacion").value.trim();
+  const nota = document.getElementById("sbNota").value.trim();
+  if (!equipo) {
+    showToast("Escribe el equipo", "var(--red)");
+    return;
+  }
+  try {
+    await addDoc(collection(db, STANDBY_LIST_COLLECTION), {
+      equipo, empresa, ubicacion, nota, createdAt: Date.now()
+    });
+    document.getElementById("sbEquipo").value = "";
+    document.getElementById("sbEmpresa").value = "";
+    document.getElementById("sbUbicacion").value = "";
+    document.getElementById("sbNota").value = "";
+    showToast(`${equipo} agregado a Standby`);
+  } catch (e) {
+    showToast("Error al guardar: " + e.message, "var(--red)");
+  }
+});
+
+const standbyListEl = document.getElementById("standbyList");
+const standbyEmptyEl = document.getElementById("standbyEmpty");
+
+function renderStandbyList(items) {
+  standbyListEl.innerHTML = "";
+  standbyEmptyEl.hidden = items.length > 0;
+  items.forEach(sb => {
+    const metaTxt = [sb.empresa, sb.ubicacion].filter(Boolean).join(" · ");
+    const card = document.createElement("div");
+    card.className = "obs-eq-card";
+    card.innerHTML = `
+      <div class="obs-eq-head">${sb.equipo}${metaTxt ? `<span>${metaTxt}</span>` : ""}</div>
+      <label class="obs-item" style="margin-top:10px;">
+        <input type="checkbox" data-sb-id="${sb.id}">
+        <span>${sb.nota ? sb.nota : "En standby, esperando ser recogido"}</span>
+      </label>
+    `;
+    card.querySelector("input[type=checkbox]").addEventListener("change", async (e) => {
+      if (!e.target.checked) return;
+      try {
+        await deleteDoc(doc(db, STANDBY_LIST_COLLECTION, sb.id));
+        showToast(`${sb.equipo} recogido — salió de Standby`);
+      } catch (err) {
+        showToast("Error al quitar: " + err.message, "var(--red)");
+        e.target.checked = false;
+      }
+    });
+    standbyListEl.appendChild(card);
+  });
+}
+
+const qStandby = query(collection(db, STANDBY_LIST_COLLECTION), orderBy("createdAt", "desc"));
+onSnapshot(qStandby, (snap) => {
+  renderStandbyList(snap.docs.map(d => ({ id: d.id, ...d.data() })));
 }, (err) => console.error(err));
 
 // ---------- plan semanal (independiente de los equipos) ----------
@@ -612,6 +885,9 @@ onSnapshot(planRef, (snap) => {
       fFlotaVolquetes.value = data.flotaVolquetes.join("\n");
       updateFlotaCount();
     }
+  }
+  if (data && Array.isArray(data.todosLosEquipos)) {
+    todosLosEquiposActual = data.todosLosEquipos;
   }
   if (data && data.actualizadoAt) {
     planUltimaEl.textContent = `Última actualización: ${formatDateTime(data.actualizadoAt)}`;
@@ -728,6 +1004,7 @@ document.getElementById("btnOt").addEventListener("click", async () => {
 
 // ---------- campañas de repuestos planificados (aplican a toda la flota) ----------
 let flotaVolquetesActual = [];
+let todosLosEquiposActual = []; // [{codigo, familia}] — los 163 equipos del Excel, para la campaña personalizada
 let campanasDocs = [];
 const cNombreEl = document.getElementById("cNombre");
 const cDescripcionEl = document.getElementById("cDescripcion");
@@ -831,6 +1108,120 @@ document.getElementById("btnCampana").addEventListener("click", async () => {
   }
 });
 
+// ---------- campaña personalizada: elegir equipos a mano de los 163 de "EQUIPOS STRACON.xlsx" ----------
+const eqPickerOverlayEl = document.getElementById("eqPickerOverlay");
+const eqPickerListEl = document.getElementById("eqPickerList");
+const eqPickerBuscarEl = document.getElementById("eqPickerBuscar");
+const eqPickerCountEl = document.getElementById("eqPickerCount");
+let eqPickerSeleccion = new Set();
+
+function filtrarTodosLosEquipos() {
+  const termino = eqPickerBuscarEl.value.trim().toLowerCase();
+  return todosLosEquiposActual.filter((e) =>
+    !termino || e.codigo.toLowerCase().includes(termino) || e.familia.toLowerCase().includes(termino)
+  );
+}
+
+function actualizarEqPickerCount() {
+  const n = eqPickerSeleccion.size;
+  eqPickerCountEl.textContent = `${n} seleccionado${n === 1 ? "" : "s"}`;
+}
+
+function renderEqPickerList() {
+  const filtrados = filtrarTodosLosEquipos();
+  const porFamilia = {};
+  filtrados.forEach((e) => {
+    const fam = e.familia || "(sin tipo)";
+    if (!porFamilia[fam]) porFamilia[fam] = [];
+    porFamilia[fam].push(e);
+  });
+
+  eqPickerListEl.innerHTML = Object.keys(porFamilia).sort().map((fam) => {
+    const items = porFamilia[fam].map((e) => `
+      <label class="eq-picker-item">
+        <input type="checkbox" data-codigo="${e.codigo}" ${eqPickerSeleccion.has(e.codigo) ? "checked" : ""}>
+        <span>${e.codigo}</span>
+      </label>
+    `).join("");
+    return `<div class="eq-picker-group-title">${fam} — ${porFamilia[fam].length}</div>${items}`;
+  }).join("");
+
+  eqPickerListEl.querySelectorAll("input[type=checkbox]").forEach((chk) => {
+    chk.addEventListener("change", () => {
+      if (chk.checked) eqPickerSeleccion.add(chk.dataset.codigo);
+      else eqPickerSeleccion.delete(chk.dataset.codigo);
+      actualizarEqPickerCount();
+    });
+  });
+}
+
+function openEqPicker() {
+  eqPickerSeleccion = new Set();
+  eqPickerBuscarEl.value = "";
+  renderEqPickerList();
+  actualizarEqPickerCount();
+  eqPickerOverlayEl.classList.add("open");
+}
+function closeEqPicker() {
+  eqPickerOverlayEl.classList.remove("open");
+}
+
+eqPickerBuscarEl.addEventListener("input", renderEqPickerList);
+document.getElementById("eqPickerClose").addEventListener("click", closeEqPicker);
+document.getElementById("eqPickerTodos").addEventListener("click", () => {
+  filtrarTodosLosEquipos().forEach((e) => eqPickerSeleccion.add(e.codigo));
+  renderEqPickerList();
+  actualizarEqPickerCount();
+});
+document.getElementById("eqPickerNinguno").addEventListener("click", () => {
+  eqPickerSeleccion.clear();
+  renderEqPickerList();
+  actualizarEqPickerCount();
+});
+
+document.getElementById("btnCampanaPersonalizada").addEventListener("click", () => {
+  if (!cNombreEl.value.trim()) {
+    showToast("Escribe el nombre de la campaña antes de elegir los equipos", "var(--red)");
+    return;
+  }
+  if (todosLosEquiposActual.length === 0) {
+    showToast("Aún no cargó la lista completa de equipos, espera un momento", "var(--red)");
+    return;
+  }
+  openEqPicker();
+});
+
+document.getElementById("eqPickerConfirmar").addEventListener("click", async () => {
+  const nombreCampana = cNombreEl.value.trim();
+  const descripcion = cDescripcionEl.value.trim();
+  if (!nombreCampana) {
+    showToast("Escribe el nombre de la campaña", "var(--red)");
+    return;
+  }
+  if (eqPickerSeleccion.size === 0) {
+    showToast("Marca al menos un equipo", "var(--red)");
+    return;
+  }
+  try {
+    const seleccionados = [...eqPickerSeleccion];
+    const batch = writeBatch(db);
+    seleccionados.forEach((equipo) => {
+      const ref = doc(collection(db, CAMPANAS_COLLECTION));
+      batch.set(ref, {
+        nombreCampana, descripcion, equipo,
+        completada: false, completadaAt: null, createdAt: Date.now()
+      });
+    });
+    await batch.commit();
+    showToast(`Campaña "${nombreCampana}" creada para ${seleccionados.length} equipos`);
+    cNombreEl.value = "";
+    cDescripcionEl.value = "";
+    closeEqPicker();
+  } catch (e) {
+    showToast("Error al crear la campaña: " + e.message, "var(--red)");
+  }
+});
+
 onSnapshot(collection(db, CAMPANAS_COLLECTION), (snap) => {
   campanasDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   renderCampanaList();
@@ -918,20 +1309,20 @@ function renderAction(v) {
   if (v.estado === ESTADOS.REPARACION) {
     abAction.innerHTML = `
       <div class="field">
-        <label for="fFechaOperativo">Fecha y hora · Listo / Operativo</label>
+        <label for="fFechaOperativo">Fecha y hora · Entregado a operador</label>
         <input type="datetime-local" id="fFechaOperativo" value="${toDatetimeLocal(Date.now())}">
-        <div class="hint">Se llena sola con la hora actual — cámbiala solo si olvidaste registrarlo al momento.</div>
+        <div class="hint">Se llena sola con la hora actual — cámbiala solo si olvidaste registrarlo al momento. El equipo queda operativo y entregado en un solo paso, ya no pasa por Standby.</div>
       </div>
       <div class="field">
         <label for="fUbicacionStandby">Ubicación</label>
         <input type="text" id="fUbicacionStandby" list="ubicaciones" value="${v.ubicacion}">
-        <div class="hint">Prellenada con la ubicación actual — cámbiala si el equipo se movió al pasar a standby.</div>
+        <div class="hint">Prellenada con la ubicación actual — cámbiala si el equipo se movió.</div>
       </div>
       <div class="field">
         <label for="fHorometroStandby">Horómetro (h)</label>
         <input type="number" id="fHorometroStandby" value="${v.horometro != null ? v.horometro : ""}" min="0" step="1" inputmode="numeric">
       </div>
-      <button class="btn standby" id="abBtn">Listo / Operativo</button>
+      <button class="btn standby" id="abBtn">Listo y entregado a operador</button>
       <button class="edit-link" id="abAvance">Actualizar % de avance — relevo de turno</button>
       <button class="edit-link" id="abRepuesto" style="color:${v.bloqueadoPorRepuesto ? "var(--red)" : "var(--text-dim)"};">${v.bloqueadoPorRepuesto ? "🛑 Editar bloqueo por repuesto" : "Marcar bloqueado por repuesto"}</button>
       <button class="edit-link" id="abFechaEstimada" style="color:${v.fechaEstimada ? "var(--accent)" : "var(--text-dim)"};">${v.fechaEstimada ? "📅 Editar fecha estimada — " + formatDateTime(v.fechaEstimada) : "Poner fecha estimada de reparación"}</button>
@@ -943,15 +1334,16 @@ function renderAction(v) {
       const nuevaUbic = document.getElementById("fUbicacionStandby").value.trim();
       const horometroRaw = document.getElementById("fHorometroStandby").value.trim();
       const horometro = horometroRaw === "" ? v.horometro ?? null : Number(horometroRaw);
-      const operativoAt = fromDatetimeLocal(val) ?? Date.now();
+      const fecha = fromDatetimeLocal(val) ?? Date.now();
       try {
         await updateDoc(doc(db, COLLECTION, v.id), {
-          estado: ESTADOS.STANDBY,
-          operativoAt,
+          estado: ESTADOS.ENTREGADO,
+          operativoAt: fecha,
+          salidaAt: fecha,
           ubicacion: nuevaUbic || v.ubicacion,
           horometro
         });
-        showToast(`${v.equipo} pasó a Standby`);
+        showToast(`${v.equipo} operativo y entregado al operador`);
         closeActionbar();
       } catch (e) {
         showToast("Error al actualizar: " + e.message, "var(--red)");
@@ -1250,14 +1642,18 @@ document.getElementById("hBuscar").addEventListener("input", (e) => {
   renderHistorial();
 });
 
-function renderHistorial() {
-  const cerrados = allEquipos
+function historialFiltrado() {
+  return allEquipos
     .filter(v => v.estado === ESTADOS.ENTREGADO || v.estado === ESTADOS.REINGRESO)
     .filter(v => {
       if (!historialSearchTerm) return true;
       return v.equipo.toLowerCase().includes(historialSearchTerm) || v.empresa.toLowerCase().includes(historialSearchTerm);
     })
     .sort((a, b) => b.ingresoAt - a.ingresoAt);
+}
+
+function renderHistorial() {
+  const cerrados = historialFiltrado();
 
   hListEl.innerHTML = "";
   hEmptyEl.hidden = cerrados.length > 0;
@@ -1281,6 +1677,71 @@ function renderHistorial() {
     hListEl.appendChild(card);
   });
 }
+
+// ---------- exportar Historial (respeta el buscador) a Excel y PDF ----------
+const HIST_COLUMNS = ["Equipo", "Empresa", "Ubicación", "Estado", "Tipo de Falla", "Descripción", "Horómetro", "Fecha Ingreso", "Fecha Operativo", "Fecha Salida/Cierre", "Horas Totales"];
+function historialFilaDatos(v) {
+  const fin = v.salidaAt || v.cierreAt || v.operativoAt || v.ingresoAt;
+  const horas = Math.max(0, (fin - v.ingresoAt) / 3600000);
+  return [
+    v.equipo,
+    v.empresa || "",
+    v.ubicacion || "",
+    v.estado === ESTADOS.ENTREGADO ? "Entregado" : "Cerrado por reingreso",
+    v.tipoFalla || "",
+    v.descripcionFalla || "",
+    v.horometro != null ? v.horometro : "",
+    formatDateTime(v.ingresoAt),
+    formatDateTime(v.operativoAt),
+    formatDateTime(fin),
+    horas.toFixed(1)
+  ];
+}
+
+document.getElementById("btnExportExcel").addEventListener("click", () => {
+  const filas = historialFiltrado();
+  if (filas.length === 0) {
+    showToast("No hay registros de historial para exportar", "var(--red)");
+    return;
+  }
+  const datos = [HIST_COLUMNS, ...filas.map(historialFilaDatos)];
+  const ws = XLSX.utils.aoa_to_sheet(datos);
+  ws["!cols"] = HIST_COLUMNS.map(() => ({ wch: 18 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Historial");
+  const fecha = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `historial-taller-${fecha}.xlsx`);
+  showToast(`Excel exportado — ${filas.length} registros`);
+});
+
+document.getElementById("btnExportPdf").addEventListener("click", () => {
+  const filas = historialFiltrado();
+  if (filas.length === 0) {
+    showToast("No hay registros de historial para exportar", "var(--red)");
+    return;
+  }
+  try {
+    const { jsPDF } = window.jspdf;
+    if (window.applyPlugin) window.applyPlugin(jsPDF);
+    const doc = new jsPDF({ orientation: "landscape" });
+    doc.setFontSize(14);
+    doc.text("Historial de equipos — Taller Stracon Punto F", 14, 14);
+    doc.setFontSize(9);
+    doc.text(`Generado ${formatDateTime(Date.now())} · ${filas.length} registro${filas.length === 1 ? "" : "s"}`, 14, 20);
+    doc.autoTable({
+      startY: 26,
+      head: [HIST_COLUMNS],
+      body: filas.map(historialFilaDatos),
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: [17, 24, 39] }
+    });
+    const fecha = new Date().toISOString().slice(0, 10);
+    doc.save(`historial-taller-${fecha}.pdf`);
+    showToast(`PDF exportado — ${filas.length} registros`);
+  } catch (e) {
+    showToast("Error al generar el PDF: " + e.message, "var(--red)");
+  }
+});
 
 function selectHistorial(id) {
   selectedHistorialId = id;

@@ -12,6 +12,8 @@
     "exceljs": "^4.4.0",
     "express": "^4.19.2",
     "firebase-admin": "^12.5.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "xlsx": "^0.18.5"
   }
 }

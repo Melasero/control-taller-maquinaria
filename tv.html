@@ -72,7 +72,7 @@
   }
 
   /* ---- métricas (incluye tendencia del Plan Semanal) ---- */
-  .metrics-row{ display:grid; grid-template-columns:1.2fr 0.9fr 1.3fr 0.9fr; gap:12px; padding:12px 44px 0; flex-shrink:0; }
+  .metrics-row{ display:grid; grid-template-columns:1.8fr 0.55fr 1.15fr 0.85fr; gap:12px; padding:12px 44px 0; flex-shrink:0; }
   .metric-card{
     background: var(--panel-2); border:1px solid var(--border); border-radius:12px; padding:10px 18px;
     display:flex; align-items:center; gap:12px;
@@ -86,10 +86,13 @@
 
   .split-card{ justify-content:space-between; padding:10px 12px; gap:0; }
   .split-half{
-    display:flex; align-items:center; gap:10px; flex:1; cursor:pointer;
+    display:flex; align-items:center; gap:10px; cursor:pointer;
     padding:4px 8px; border-radius:8px; transition: background .15s ease;
   }
   .split-half:hover{ background: var(--panel); }
+  /* Reparación se lleva todo el ancho que Standby no necesita (solo tiene un número y una etiqueta) */
+  .split-half.rep{ flex:1; min-width:0; }
+  .split-half.sby{ flex:0 0 auto; }
   .split-divider{ width:1px; align-self:stretch; margin:2px 6px; background: var(--border); flex-shrink:0; }
   .split-half.rep .m-ind{ background: var(--red); box-shadow:0 0 0 5px var(--red-dim); }
   .split-half.rep .m-num{ color: var(--red); }
@@ -97,9 +100,9 @@
   .split-half.sby .m-num{ color: var(--green); }
   /* desglose por tipo de equipo (6 volquetes / 2 excavadoras / ...) entre Reparación y Standby */
   .split-tipos{
-    margin-left:auto; padding:0 6px; text-align:center; height:42px; overflow:hidden;
+    flex:1; padding:0 10px; text-align:center; height:80px; overflow:hidden;
     display:flex; flex-direction:column;
-    font-size:11.5px; font-weight:800; line-height:14px; letter-spacing:0.03em; text-transform:uppercase; color: var(--red);
+    font-size:13px; font-weight:800; line-height:16px; letter-spacing:0.03em; text-transform:uppercase; color: var(--red);
   }
   .split-tipos-inner{ margin:auto 0; }
   /* más de 3 tipos: la lista sube y baja sola, lento, dentro del mismo alto de 3 líneas */
@@ -121,6 +124,7 @@
 
   .mttr-ind{ background: var(--accent); box-shadow:0 0 0 5px var(--accent-dim); }
   .mttr-num{ color: var(--accent); }
+  .mttr-card{ padding:10px 12px; gap:8px; }
   .metric-card.plan{ flex-direction:column; align-items:stretch; gap:5px; }
   .plan-row1{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
   .plan-title-mini{ font-size:10px; color: var(--text-faint); text-transform:uppercase; letter-spacing:0.05em; font-weight:600; }
@@ -201,6 +205,8 @@
     background: var(--panel-2); border:1px solid var(--border); padding:2px 9px; border-radius:999px;
     font-variant-numeric: tabular-nums; flex-shrink:0;
   }
+  .count.clickable{ cursor:pointer; transition: border-color .15s ease, color .15s ease; }
+  .count.clickable:hover{ border-color: var(--text-faint); color: var(--text); }
   .col-head-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
   .sort-toggle{
     font-family:'IBM Plex Mono', monospace; font-size:10px; font-weight:700; letter-spacing:0.03em;
@@ -482,19 +488,8 @@
   }
   .board-overlay-close:hover{ color:#fff; border-color:#666; }
   .board-overlay-grid{
-    flex:1; overflow-y:auto; padding:14px 32px 34px;
-    display:grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); column-gap:32px; align-content:start;
-  }
-  .board-row{
-    display:grid; grid-template-columns: 108px 1fr auto; align-items:center; gap:14px;
-    padding:13px 6px; border-bottom:1px solid #1a1a1a; font-family:'IBM Plex Mono', monospace;
-  }
-  .board-row .b-code{ font-weight:800; font-size:18px; color:#f5f5f5; letter-spacing:0.03em; }
-  .board-row .b-mid{ display:flex; align-items:center; gap:8px; min-width:0; }
-  .board-row .b-tipo{ font-size:11px; color:#6b7280; text-transform:uppercase; letter-spacing:0.06em; }
-  .board-row .b-camp{
-    font-family:'IBM Plex Mono', monospace; font-size:10.5px; font-weight:700; color: var(--accent);
-    background: var(--accent-dim); padding:2px 7px; border-radius:999px; white-space:nowrap; flex-shrink:0;
+    flex:1; overflow-y:auto; padding:20px 32px 34px;
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:14px; align-content:start;
   }
 
   .board-campanas-strip{
@@ -507,20 +502,76 @@
   }
   .board-campana-chip .bc-nombre{ font-weight:700; text-transform:uppercase; letter-spacing:0.03em; }
   .board-campana-chip .bc-progreso{ color:#8fa0b3; }
-  .board-row .b-status{
-    font-size:11.5px; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; padding:5px 12px;
-    border-radius:4px; white-space:nowrap; justify-self:end;
+
+  /* ---- tarjetas del panel emergente (Volquetes / Mantenimiento / Observaciones / Campaña) ---- */
+  .bcard{
+    background: linear-gradient(180deg, var(--card), #161d27);
+    border:1px solid var(--border); border-left:3px solid var(--border); border-radius:12px;
+    padding:14px 16px; display:flex; flex-direction:column; gap:10px; min-width:0;
+    transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease, opacity .15s ease;
   }
-  .board-row.op .b-status{ background: rgba(52,211,153,0.14); color: var(--green); }
-  .board-row.mtto{ cursor:pointer; }
-  .board-row.mtto:hover{ background: rgba(255,255,255,0.035); }
-  .board-row.mtto .b-status{
-    background: rgba(242,73,92,0.16); color: var(--red); animation: boardStatusBlink 1.8s ease-in-out infinite;
+  .bcard.clickable{ cursor:pointer; }
+  .bcard.clickable:hover{ transform: translateY(-2px); border-color: var(--text-faint); box-shadow: 0 10px 24px rgba(0,0,0,0.4); }
+  .bcard-top{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; min-width:0; }
+  .bcard-code{
+    font-family:'IBM Plex Mono', monospace; font-weight:800; font-size:18px; color:#f5f5f5; letter-spacing:0.02em;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
-  @keyframes boardStatusBlink{
-    0%,100%{ opacity:1; }
-    50%{ opacity:0.45; }
+  .bcard-tipo{
+    font-size:10px; color: var(--text-faint); text-transform:uppercase; letter-spacing:0.06em; font-weight:700;
+    white-space:nowrap; flex-shrink:0;
   }
+  .bcard-bottom{ display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; }
+
+  /* operativo (verde) */
+  .bcard.op{ border-left-color: var(--green-line); }
+  .bcard-badge-op{
+    display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:800; text-transform:uppercase;
+    letter-spacing:0.04em; color: var(--green); background: var(--green-dim); padding:4px 10px; border-radius:999px;
+  }
+  .bcard-badge-op svg{ width:12px; height:12px; }
+
+  /* en mantenimiento (rojo, con la etiqueta de tipo de falla con ícono — meta-tag.type ya trae su color) */
+  .bcard.mtto{ border-left-color: var(--red-line); animation: bcardPulseRed 2.4s ease-in-out infinite; }
+  @keyframes bcardPulseRed{
+    0%,100%{ box-shadow: 0 0 0 0 rgba(242,73,92,0); }
+    50%{ box-shadow: 0 0 0 1px rgba(242,73,92,0.18), 0 0 16px 0 rgba(242,73,92,0.14); }
+  }
+  .bcard-badge-mtto{
+    display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; text-transform:uppercase;
+    letter-spacing:0.03em; color: var(--red); background: var(--red-dim); padding:4px 10px; border-radius:999px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .bcard-badge-mtto svg{ width:12px; height:12px; flex-shrink:0; }
+  .bcard-desc{
+    font-size:12px; color: var(--text-dim); line-height:1.4;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+
+  /* observaciones (amarillo) */
+  .bcard.obs{ border-left-color: var(--yellow-line); }
+  .bcard-note{
+    font-size:12.5px; color: var(--text); line-height:1.4; font-style:italic;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .bcard-note::before{ content:"\201C"; color: var(--yellow); font-style:normal; margin-right:2px; }
+  .bcard-note-count{
+    font-size:10px; font-weight:800; text-transform:uppercase; color: var(--yellow); background: var(--yellow-dim);
+    padding:3px 8px; border-radius:999px; white-space:nowrap; flex-shrink:0; align-self:flex-start;
+  }
+
+  /* campaña: cada tarjeta tiene su check, y se queda con el check marcado — nunca desaparece */
+  .bcard.camp{ border-left-color: var(--border); }
+  .bcard-check{
+    width:26px; height:26px; border-radius:7px; border:2px solid #333; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800;
+    color: var(--green); transition: background .15s ease, border-color .15s ease;
+  }
+  .bcard.camp.done{ border-left-color: var(--green-line); }
+  .bcard.camp.done .bcard-check{ background: var(--green-dim); border-color: var(--green); }
+  .bcard.camp.done .bcard-code{ color:#6b7280; text-decoration: line-through; }
+  .bcard.camp.done .bcard-tipo{ color:#4b5563; }
+  .bcard-check-label{ font-size:10.5px; color: var(--text-faint); text-transform:uppercase; letter-spacing:0.04em; font-weight:700; }
 </style>
 </head>
 <body>
@@ -547,14 +598,14 @@
       <div class="split-tipos" id="fallaTipos"></div>
     </div>
     <div class="split-divider"></div>
-    <div class="split-half sby" id="standbyResumenCard" title="Ver los equipos entregados en este turno">
+    <div class="split-half sby" id="standbyResumenCard" title="Ver la lista de equipos en Standby">
       <span class="m-ind"></span>
       <div><div class="m-num" id="metricStandby">0</div><div class="m-label">Standby</div></div>
     </div>
   </div>
-  <div class="metric-card">
+  <div class="metric-card mttr-card">
     <span class="m-ind mttr-ind"></span>
-    <div><div class="m-num mttr-num" id="metricMttr">—</div><div class="m-label">MTTR Promedio (30 días)</div></div>
+    <div><div class="m-num mttr-num" id="metricMttr">—</div><div class="m-label">MTTR (30 días)</div></div>
   </div>
   <div class="metric-card plan volq-card" id="planCard" title="Ver las OT de esta semana">
     <div class="plan-row1">
@@ -594,7 +645,7 @@
       <div class="label"><span class="ind red"></span><h2>En mantenimiento</h2></div>
       <div class="col-head-right">
         <button class="sort-toggle" id="fallaSortToggle" title="Ordenar alfabéticamente por equipo">A-Z</button>
-        <div class="count" id="countFalla">0</div>
+        <div class="count clickable" id="countFalla" title="Ver todos en pantalla completa">0</div>
       </div>
     </div>
     <div class="list" id="listFalla"></div>
@@ -602,14 +653,17 @@
   <div class="column">
     <div class="col-head">
       <div class="label"><span class="ind yellow"></span><h2>Equipos con Observaciones</h2></div>
-      <div class="count" id="countObs">0</div>
+      <div class="count clickable" id="countObs" title="Ver todos en pantalla completa">0</div>
     </div>
     <div class="list" id="listObs"></div>
   </div>
   <div class="column">
     <div class="col-head">
       <div class="label"><span class="ind blue"></span><h2>Campañas en Curso</h2></div>
-      <div class="count" id="countCampanas">0</div>
+      <div class="col-head-right">
+        <button class="sort-toggle" id="campanasViewToggle" title="Cambiar entre vista Lista y vista Grupo">Lista</button>
+        <div class="count" id="countCampanas">0</div>
+      </div>
     </div>
     <div class="col-stat-hoy" id="entregadosHoyStat">0 entregados hoy</div>
     <div class="list" id="listCampanas"></div>
@@ -624,7 +678,7 @@
 
 <div class="board-overlay" id="boardOverlay">
   <div class="board-overlay-head">
-    <div class="board-overlay-title"><span class="board-dot"></span>ESTADO DE FLOTA &middot; VOLQUETES</div>
+    <div class="board-overlay-title"><span class="board-dot"></span><span id="boardOverlayTitleText">ESTADO DE FLOTA &middot; VOLQUETES</span></div>
     <div class="board-overlay-sub" id="boardOverlaySub">—</div>
     <div class="board-overlay-hours" id="boardOverlayHours" hidden></div>
     <button type="button" class="board-overlay-close" id="boardOverlayClose" aria-label="Cerrar">&times;</button>
@@ -638,7 +692,7 @@ import {
   collection, doc, onSnapshot, query, orderBy, updateDoc, writeBatch, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import {
-  ESTADOS, PRIORIDADES, PLAN_COLLECTION, PLAN_DOC, OBS_COLLECTION, OT_PLAN_COLLECTION, CAMPANAS_COLLECTION,
+  ESTADOS, PRIORIDADES, PLAN_COLLECTION, PLAN_DOC, OBS_COLLECTION, OT_PLAN_COLLECTION, CAMPANAS_COLLECTION, STANDBY_LIST_COLLECTION,
   formatHMS, formatHM, formatTime, formatDateTime, isoWeekInfo
 } from "./shared.js";
 
@@ -675,10 +729,16 @@ const countCampanasEl = document.getElementById("countCampanas");
 const metricFallaEl = document.getElementById("metricFalla");
 const fallaTiposEl = document.getElementById("fallaTipos");
 // Nombres cortos (singular, plural) para el desglose compacto de la tarjeta Reparación.
+// Nombres cortos por prefijo, para que el desglose quepa en el ancho de la tarjeta
+// (el nombre completo de cada tipo está en TIPO_EQUIPO, más abajo).
 const TIPO_CORTO = {
-  CV: ["Volquete", "Volquetes"], CA: ["Cisterna", "Cisternas"], CT: ["Tracto", "Tractos"],
-  CL: ["Lubricador", "Lubricadores"], EX: ["Excavadora", "Excavadoras"], RO: ["Rodillo", "Rodillos"],
-  MC: ["Montacargas", "Montacargas"]
+  CV: ["Volquete", "Volquetes"], CA: ["Cisterna Agua", "Cisternas Agua"], CB: ["Baranda", "Barandas"],
+  CC: ["Cisterna Comb.", "Cisternas Comb."], CF: ["Cargador", "Cargadores"], CG: ["Camión Grúa", "Camiones Grúa"],
+  CL: ["Lubricador", "Lubricadores"], CO: ["Compresora", "Compresoras"], CT: ["Tracto", "Tractos"],
+  EX: ["Excavadora", "Excavadoras"], GE: ["Electrógeno", "Electrógenos"], MC: ["Minicargador", "Minicargadores"],
+  MO: ["Motoniveladora", "Motoniveladoras"], MS: ["Motosoldadora", "Motosoldadoras"], RE: ["Retro", "Retros"],
+  RO: ["Rodillo", "Rodillos"], TH: ["Telehandler", "Telehandlers"], TI: ["Torre Iluminación", "Torres Iluminación"],
+  TO: ["Tractor Orugas", "Tractores Orugas"]
 };
 let fallaTiposKey = "";
 function renderFallaTipos(enFalla){
@@ -703,7 +763,7 @@ function renderFallaTipos(enFalla){
   const inner = fallaTiposEl.firstElementChild;
   const overflow = inner.offsetHeight - fallaTiposEl.clientHeight;
   if(overflow > 1){
-    const moveSec = Math.max(3, overflow / 10);           // ~10 px/s, mínimo 3 s por tramo
+    const moveSec = Math.max(6, overflow / 5);            // ~5 px/s, mínimo 6 s por tramo
     inner.style.setProperty("--tipos-shift", `-${overflow}px`);
     inner.style.animationDuration = `${(moveSec / 0.35).toFixed(1)}s`;
     inner.classList.add("scroll");
@@ -741,11 +801,11 @@ fallaSortToggleEl.addEventListener("click", () => {
 updateFallaSortToggleUI();
 const metricStandbyEl = document.getElementById("metricStandby");
 const entregadosHoyStatEl = document.getElementById("entregadosHoyStat");
-function renderEntregadosHoy(){
+function renderCampanasHoy(){
   const hoyStart = jornadaStart(Date.now());
   const hoyEnd = hoyStart + 86400000;
-  const n = fleet.filter(v => v.estado === ESTADOS.ENTREGADO && v.salidaAt >= hoyStart && v.salidaAt < hoyEnd).length;
-  entregadosHoyStatEl.textContent = `${n} entregado${n === 1 ? "" : "s"} hoy`;
+  const n = campanasDocs.filter(c => c.completada && c.completadaAt >= hoyStart && c.completadaAt < hoyEnd).length;
+  entregadosHoyStatEl.textContent = `${n} campaña${n === 1 ? "" : "s"} completada${n === 1 ? "" : "s"} hoy`;
 }
 
 const nodeMap = {};
@@ -794,14 +854,27 @@ function prefijoDe(equipo){
   const m = /^([A-Za-z]+)/.exec((equipo || "").trim());
   return m ? m[1].toUpperCase() : "";
 }
+// Mapeo completo según "EQUIPOS STRACON.xlsx" (columnas Familia / EQP) — 163 equipos, 19 familias.
 const TIPO_EQUIPO = {
   CV: { singular: "Volquete", plural: "Volquetes" },
   CA: { singular: "Cisterna de Agua", plural: "Cisternas de Agua" },
-  CT: { singular: "Camión Tracto", plural: "Camiones Tracto" },
+  CB: { singular: "Camión Baranda", plural: "Camiones Baranda" },
+  CC: { singular: "Cisterna de Combustible", plural: "Cisternas de Combustible" },
+  CF: { singular: "Cargador Frontal", plural: "Cargadores Frontales" },
+  CG: { singular: "Camión Grúa", plural: "Camiones Grúa" },
   CL: { singular: "Camión Lubricador", plural: "Camiones Lubricador" },
+  CO: { singular: "Compresora", plural: "Compresoras" },
+  CT: { singular: "Camión Tracto", plural: "Camiones Tracto" },
   EX: { singular: "Excavadora", plural: "Excavadoras" },
+  GE: { singular: "Grupo Electrógeno", plural: "Grupos Electrógenos" },
+  MC: { singular: "Minicargador", plural: "Minicargadores" },
+  MO: { singular: "Motoniveladora", plural: "Motoniveladoras" },
+  MS: { singular: "Motosoldadora", plural: "Motosoldadoras" },
+  RE: { singular: "Retroexcavadora", plural: "Retroexcavadoras" },
   RO: { singular: "Rodillo", plural: "Rodillos" },
-  MC: { singular: "Montacargas", plural: "Montacargas" }
+  TH: { singular: "Telehandler", plural: "Telehandlers" },
+  TI: { singular: "Torre de Iluminación", plural: "Torres de Iluminación" },
+  TO: { singular: "Tractor de Orugas", plural: "Tractores de Orugas" }
 };
 const TIPO_EQUIPO_OTROS = { singular: "Otro", plural: "Otros" };
 function tipoEquipoDe(equipo){
@@ -813,14 +886,14 @@ const ICON_EXCAVADORA = '<rect x="2" y="16" width="8" height="4" rx="1"/><rect x
 const ICON_RODILLO = '<circle cx="7" cy="17" r="5"/><rect x="11" y="10" width="8" height="6" rx="1"/><circle cx="18" cy="18" r="3"/>';
 const ICON_CARGADOR = '<path d="M3 21V9"/><path d="M3 9h3"/><rect x="3" y="15" width="4" height="4"/><path d="M7 19h6l3-3"/><rect x="13" y="14" width="6" height="5" rx="1"/><circle cx="9" cy="21" r="1.5"/><circle cx="17" cy="21" r="1.5"/>';
 const ICON_MAQUINA_DEFAULT = '<rect x="3" y="8" width="18" height="10" rx="2"/><circle cx="8" cy="18" r="2"/><circle cx="16" cy="18" r="2"/>';
+const ICONO_POR_PREFIJO = {
+  CV: ICON_CAMION, CA: ICON_CAMION, CB: ICON_CAMION, CC: ICON_CAMION, CG: ICON_CAMION, CL: ICON_CAMION, CT: ICON_CAMION,
+  EX: ICON_EXCAVADORA, RE: ICON_EXCAVADORA,
+  RO: ICON_RODILLO,
+  CF: ICON_CARGADOR, MC: ICON_CARGADOR
+};
 function equipoIcon(equipo){
-  const code = prefijoDe(equipo);
-  let path;
-  if(code === "CV" || code === "CA" || code === "CT" || code === "CL") path = ICON_CAMION;
-  else if(code === "EX") path = ICON_EXCAVADORA;
-  else if(code === "RO") path = ICON_RODILLO;
-  else if(code === "MC") path = ICON_CARGADOR;
-  else path = ICON_MAQUINA_DEFAULT;
+  const path = ICONO_POR_PREFIJO[prefijoDe(equipo)] || ICON_MAQUINA_DEFAULT;
   return `<svg class="eq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
 }
 function isCritico(v){ return v.prioridad === PRIORIDADES.CRITICO; }
@@ -1093,6 +1166,7 @@ function renderVolquetesGauge(){
 
 // ---------- pantalla completa estilo "tablero de aeropuerto" con el estado de cada volquete ----------
 const boardOverlayEl = document.getElementById("boardOverlay");
+const boardOverlayTitleTextEl = document.getElementById("boardOverlayTitleText");
 const boardOverlaySubEl = document.getElementById("boardOverlaySub");
 const boardOverlayHoursEl = document.getElementById("boardOverlayHours");
 const boardOverlayGridEl = document.getElementById("boardOverlayGrid");
@@ -1128,6 +1202,8 @@ function campanaSummaryHtml(){
 
 function openFlotaFullscreen(){
   planModalOpen = false;
+  boardOverlayTitleTextEl.textContent = "ESTADO DE FLOTA · VOLQUETES";
+  boardOverlayHoursEl.hidden = true;
   const items = flotaVolquetes.slice().sort((a,b) => a.localeCompare(b, "es"));
   const enMtto = items.filter(code => fallaActualDe(code)).length;
   boardOverlaySubEl.textContent = `${items.length - enMtto}/${items.length} OPERATIVOS · ${enMtto} EN MANTENIMIENTO`;
@@ -1136,28 +1212,33 @@ function openFlotaFullscreen(){
     const v = fallaActualDe(code);
     const tipo = tipoEquipoDe(code);
     const nCamp = campanasPendientesDe(code);
-    const campBadge = nCamp > 0 ? `<span class="b-camp" title="${nCamp} campaña${nCamp === 1 ? "" : "s"} pendiente${nCamp === 1 ? "" : "s"}">&#128295;${nCamp}</span>` : "";
+    const campBadge = nCamp > 0 ? `<span class="bcard-note-count" style="color:var(--accent); background:var(--accent-dim); align-self:auto;" title="${nCamp} campaña${nCamp === 1 ? "" : "s"} pendiente${nCamp === 1 ? "" : "s"}">&#128295; ${nCamp}</span>` : "";
     if(v){
       return `
-        <div class="board-row mtto" data-id="${v.id}">
-          <span class="b-code">${code}</span>
-          <span class="b-mid"><span class="b-tipo">${tipo.singular}</span>${campBadge}</span>
-          <span class="b-status">${v.tipoFalla || "En mantenimiento"}</span>
+        <div class="bcard mtto clickable" data-id="${v.id}">
+          <div class="bcard-top"><span class="bcard-code">${code}</span><span class="bcard-tipo">${tipo.singular}</span></div>
+          <div class="bcard-bottom">
+            ${v.tipoFalla ? tipoFallaTag(v.tipoFalla) : `<span class="bcard-badge-mtto">En mantenimiento</span>`}
+            ${campBadge}
+          </div>
+          ${v.descripcionFalla ? `<div class="bcard-desc">${v.descripcionFalla}</div>` : ""}
         </div>
       `;
     }
     return `
-      <div class="board-row op">
-        <span class="b-code">${code}</span>
-        <span class="b-mid"><span class="b-tipo">${tipo.singular}</span>${campBadge}</span>
-        <span class="b-status">Operativo</span>
+      <div class="bcard op">
+        <div class="bcard-top"><span class="bcard-code">${code}</span><span class="bcard-tipo">${tipo.singular}</span></div>
+        <div class="bcard-bottom">
+          <span class="bcard-badge-op"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Operativo</span>
+          ${campBadge}
+        </div>
       </div>
     `;
   }).join("");
 
   boardOverlayGridEl.innerHTML = campanaSummaryHtml() + filas;
 
-  boardOverlayGridEl.querySelectorAll(".board-row.mtto").forEach(row => {
+  boardOverlayGridEl.querySelectorAll(".bcard.mtto").forEach(row => {
     row.addEventListener("click", () => {
       const v = fleet.find(f => f.id === row.dataset.id);
       if(v){ closeBoardOverlay(); openModal(v, "red", "En mantenimiento"); }
@@ -1167,6 +1248,65 @@ function openFlotaFullscreen(){
   boardOverlayEl.classList.add("open");
 }
 if(volqCardEl) volqCardEl.addEventListener("click", openFlotaFullscreen);
+
+// ---------- pantalla completa: todos los equipos "En mantenimiento" ----------
+function openMantenimientoFullscreen(){
+  planModalOpen = false;
+  boardOverlayHoursEl.hidden = true;
+  boardOverlayTitleTextEl.textContent = "EQUIPOS EN MANTENIMIENTO";
+  const items = fleet
+    .filter(v => v.estado === ESTADOS.REPARACION)
+    .sort((a,b) => (isCritico(b) - isCritico(a)) || a.equipo.localeCompare(b.equipo, "es"));
+  boardOverlaySubEl.textContent = `${items.length} EQUIPO${items.length === 1 ? "" : "S"}`;
+
+  boardOverlayGridEl.innerHTML = items.map(v => `
+    <div class="bcard mtto clickable" data-id="${v.id}">
+      <div class="bcard-top">
+        <span class="bcard-code">${v.equipo}${isCritico(v) ? ` <span class="critico-mini">Crítico</span>` : ""}</span>
+        <span class="bcard-tipo">${tipoEquipoDe(v.equipo).singular}</span>
+      </div>
+      <div class="bcard-bottom">${v.tipoFalla ? tipoFallaTag(v.tipoFalla) : `<span class="bcard-badge-mtto">En mantenimiento</span>`}</div>
+      ${v.descripcionFalla ? `<div class="bcard-desc">${v.descripcionFalla}</div>` : ""}
+    </div>
+  `).join("");
+
+  boardOverlayGridEl.querySelectorAll(".bcard.mtto").forEach(row => {
+    row.addEventListener("click", () => {
+      const v = fleet.find(f => f.id === row.dataset.id);
+      if(v){ closeBoardOverlay(); openModal(v, "red", "En mantenimiento"); }
+    });
+  });
+  boardOverlayEl.classList.add("open");
+}
+countFallaEl.addEventListener("click", (e) => { e.stopPropagation(); openMantenimientoFullscreen(); });
+
+// ---------- pantalla completa: todos los "Equipos con Observaciones" ----------
+function openObservacionesFullscreen(){
+  planModalOpen = false;
+  boardOverlayHoursEl.hidden = true;
+  boardOverlayTitleTextEl.textContent = "EQUIPOS CON OBSERVACIONES";
+  const grupos = groupObs(obsDocs);
+  boardOverlaySubEl.textContent = `${grupos.length} EQUIPO${grupos.length === 1 ? "" : "S"}`;
+
+  boardOverlayGridEl.innerHTML = grupos.map(g => `
+    <div class="bcard obs clickable" data-id="${g.id}">
+      <div class="bcard-top"><span class="bcard-code">${g.equipo}</span><span class="bcard-tipo">${tipoEquipoDe(g.equipo).singular}</span></div>
+      <div class="bcard-bottom">
+        <div class="bcard-note">${g.notas[0].texto}</div>
+        ${g.notas.length > 1 ? `<span class="bcard-note-count">+${g.notas.length - 1} más</span>` : ""}
+      </div>
+    </div>
+  `).join("");
+
+  boardOverlayGridEl.querySelectorAll(".bcard.obs").forEach(row => {
+    row.addEventListener("click", () => {
+      const g = grupos.find(x => x.id === row.dataset.id);
+      if(g){ closeBoardOverlay(); openObsModal(g); }
+    });
+  });
+  boardOverlayEl.classList.add("open");
+}
+countObsEl.addEventListener("click", (e) => { e.stopPropagation(); openObservacionesFullscreen(); });
 
 // ---------- resumen de "Equipos en Mantenimiento" por tipo (volquete / cisterna / rodillo / etc.) ----------
 function openFallaResumenModal(){
@@ -1277,8 +1417,54 @@ function openSalidasHoyModal(){
   });
   modalBackdrop.classList.add("open");
 }
+// ---------- lista manual e independiente de Standby (no depende del estado "standby") ----------
+let standbyManualDocs = [];
+const qStandbyManual = query(collection(db, STANDBY_LIST_COLLECTION), orderBy("createdAt", "desc"));
+onSnapshot(qStandbyManual, (snap) => {
+  standbyManualDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  metricStandbyEl.textContent = standbyManualDocs.length;
+}, (err) => console.error(err));
+
+function openStandbyManualModal(){
+  planModalOpen = false;
+  const items = standbyManualDocs;
+  const rows = items.map(sb => {
+    const metaTxt = [sb.empresa, sb.ubicacion].filter(Boolean).join(" · ");
+    return `
+      <div class="obs-item clickable" data-sb-id="${sb.id}">
+        <span class="obs-check"></span>
+        <span class="obs-text">${sb.equipo}${metaTxt ? " — " + metaTxt : ""}${sb.nota ? ": " + sb.nota : ""}</span>
+      </div>
+    `;
+  }).join("");
+  modalBox.innerHTML = `
+    <div class="modal-head">
+      <div><div class="modal-eq">Standby</div></div>
+      <span class="modal-state green">${items.length} equipo${items.length === 1 ? "" : "s"}</span>
+    </div>
+    <div class="modal-meta">Toca uno para marcarlo recogido y quitarlo de la lista</div>
+    ${items.length
+      ? `<div class="obs-list" style="margin-top:16px;">${rows}</div>`
+      : `<div class="empty" style="margin-top:16px;">Sin equipos en standby.</div>`}
+  `;
+  modalBox.querySelectorAll(".obs-item.clickable").forEach(itemEl => {
+    itemEl.addEventListener("click", () => {
+      if(itemEl.classList.contains("resolviendo")) return;
+      const sbId = itemEl.dataset.sbId;
+      const sb = items.find(x => x.id === sbId);
+      itemEl.classList.add("resolviendo");
+      mostrarToast(`${sb ? sb.equipo : "Equipo"} recogido — salió de Standby`);
+      setTimeout(() => {
+        if(itemEl.parentNode) itemEl.remove();
+        if(!modalBox.querySelector(".obs-item")) closeModal();
+      }, 260);
+      deleteDoc(doc(db, STANDBY_LIST_COLLECTION, sbId)).catch(err => console.error(err));
+    });
+  });
+  modalBackdrop.classList.add("open");
+}
 const standbyResumenCardEl = document.getElementById("standbyResumenCard");
-if(standbyResumenCardEl) standbyResumenCardEl.addEventListener("click", openSalidasHoyModal);
+if(standbyResumenCardEl) standbyResumenCardEl.addEventListener("click", openStandbyManualModal);
 
 function render(){
   // Los registros "reingreso" (equipos que volvieron a mantenimiento por una
@@ -1297,14 +1483,10 @@ function render(){
       return b.ingresoAt - a.ingresoAt;
     });
 
-  const enStandby = active
-    .filter(v => v.estado === ESTADOS.STANDBY)
-    .sort((a,b) => (isCritico(b) - isCritico(a)) || (b.operativoAt - a.operativoAt));
-
   countFallaEl.textContent = enFalla.length;
   metricFallaEl.textContent = enFalla.length;
   renderFallaTipos(enFalla);
-  metricStandbyEl.textContent = enStandby.length;
+  // metricStandbyEl ya no sale de "active" — lo actualiza la lista manual de Standby (ver más abajo).
 
   // pocas tarjetas en la lista -> las agranda para aprovechar el espacio libre;
   // apenas vuelven a ser ~5 o más, regresa sola al tamaño compacto.
@@ -1315,7 +1497,6 @@ function render(){
   renderPlanSub();
   renderVolquetesGauge();
   renderMttr();
-  renderEntregadosHoy();
   tickTimers();
 }
 
@@ -1357,8 +1538,29 @@ onSnapshot(qObs, (snap) => {
   renderObs();
 }, (err) => console.error(err));
 
-// ---------- campañas en curso (repuestos planificados, agrupadas por equipo) ----------
+// ---------- campañas en curso (repuestos planificados) ----------
+// Dos vistas: "lista" (una tarjeta por equipo, como Observaciones) y "grupo"
+// (una tarjeta por campaña, que abre el tablero de pantalla completa con los
+// 57 equipos y su check — igual que el tablero de Volquetes Operativos).
 let campanasDocs = [];
+let campanasViewMode = "grupo";
+const campanasViewToggleEl = document.getElementById("campanasViewToggle");
+const CAMPANAS_VIEW_LABEL = { lista: "Lista", grupo: "Grupo" };
+const CAMPANAS_VIEW_TITLE = {
+  lista: "Vista actual: Lista (una tarjeta por equipo). Toca para ver por Grupo.",
+  grupo: "Vista actual: Grupo (una tarjeta por campaña). Toca para ver por Lista."
+};
+function actualizarCampanasViewToggle(){
+  campanasViewToggleEl.textContent = CAMPANAS_VIEW_LABEL[campanasViewMode];
+  campanasViewToggleEl.title = CAMPANAS_VIEW_TITLE[campanasViewMode];
+  campanasViewToggleEl.classList.toggle("active", campanasViewMode === "grupo");
+}
+campanasViewToggleEl.addEventListener("click", () => {
+  campanasViewMode = campanasViewMode === "lista" ? "grupo" : "lista";
+  actualizarCampanasViewToggle();
+  renderCampanas();
+});
+actualizarCampanasViewToggle();
 
 function groupCampanas(list){
   const pending = list.filter(c => !c.completada);
@@ -1370,6 +1572,83 @@ function groupCampanas(list){
     if(c.createdAt > g.lastAt) g.lastAt = c.createdAt;
   });
   return Object.values(map).sort((a,b) => a.equipo.localeCompare(b.equipo, "es"));
+}
+
+// Vista "grupo": todas las campañas (hechas y pendientes) agrupadas por nombre.
+function groupCampanasPorNombre(list){
+  const map = {};
+  list.forEach(c => {
+    if(!map[c.nombreCampana]) map[c.nombreCampana] = { id: "campgroup-" + c.nombreCampana, nombre: c.nombreCampana, descripcion: c.descripcion, items: [] };
+    map[c.nombreCampana].items.push(c);
+  });
+  return Object.values(map).sort((a,b) => a.nombre.localeCompare(b.nombre, "es"));
+}
+
+function buildCampanaGroupCard(g){
+  const card = document.createElement("div");
+  card.className = "card blue";
+  card.dataset.id = g.id;
+  const total = g.items.length;
+  const hechas = g.items.filter(it => it.completada).length;
+  const pct = total > 0 ? Math.round((hechas / total) * 100) : 0;
+  card.innerHTML = `
+    <div class="card-head">
+      <div class="card-head-left">
+        <div class="eq-name-row"><div class="eq-name">${g.nombre}</div></div>
+        ${g.descripcion ? `<div class="falla-desc">${g.descripcion}</div>` : ""}
+      </div>
+      <div class="card-head-right"><div class="head-timer" style="color:var(--accent);">${hechas}/${total}</div></div>
+    </div>
+    <div class="metric-bar" style="margin-top:9px;"><div class="metric-bar-fill" style="width:${pct}%;"></div></div>
+  `;
+  card.addEventListener("click", () => openCampanaFullscreen(g.nombre));
+  return card;
+}
+
+function openCampanaFullscreen(nombreCampana){
+  planModalOpen = false;
+  boardOverlayHoursEl.hidden = true;
+  const items = campanasDocs
+    .filter(c => c.nombreCampana === nombreCampana)
+    .sort((a,b) => a.equipo.localeCompare(b.equipo, "es"));
+
+  boardOverlayTitleTextEl.textContent = nombreCampana;
+  const actualizarSub = () => {
+    const hechas = items.filter(it => it.completada).length;
+    boardOverlaySubEl.textContent = `${hechas}/${items.length} HECHAS`;
+  };
+  actualizarSub();
+
+  boardOverlayGridEl.innerHTML = items.map(it => `
+    <div class="bcard camp clickable${it.completada ? " done" : ""}" data-id="${it.id}">
+      <div class="bcard-top"><span class="bcard-code">${it.equipo}</span><span class="bcard-tipo">${tipoEquipoDe(it.equipo).singular}</span></div>
+      <div class="bcard-bottom">
+        <span class="bcard-check">${it.completada ? "&#10003;" : ""}</span>
+        <span class="bcard-check-label">${it.completada ? "Hecho" : "Pendiente"}</span>
+      </div>
+    </div>
+  `).join("");
+
+  boardOverlayGridEl.querySelectorAll(".bcard.camp").forEach(row => {
+    row.addEventListener("click", () => {
+      const it = items.find(x => x.id === row.dataset.id);
+      if(!it) return;
+      const nuevoValor = !it.completada;
+      // se queda en la lista siempre — solo cambia el check, nunca desaparece.
+      it.completada = nuevoValor;
+      row.classList.toggle("done", nuevoValor);
+      const checkEl = row.querySelector(".bcard-check");
+      if(checkEl) checkEl.innerHTML = nuevoValor ? "&#10003;" : "";
+      const labelEl = row.querySelector(".bcard-check-label");
+      if(labelEl) labelEl.textContent = nuevoValor ? "Hecho" : "Pendiente";
+      actualizarSub();
+      updateDoc(doc(db, CAMPANAS_COLLECTION, it.id), {
+        completada: nuevoValor,
+        completadaAt: nuevoValor ? Date.now() : null
+      }).catch(err => console.error(err));
+    });
+  });
+  boardOverlayEl.classList.add("open");
 }
 
 function buildCampanaCard(g){
@@ -1425,6 +1704,14 @@ function openCampanaModal(g){
 }
 
 function renderCampanas(){
+  renderCampanasHoy();
+  if(campanasViewMode === "grupo"){
+    const grupos = groupCampanasPorNombre(campanasDocs);
+    countCampanasEl.textContent = grupos.length;
+    listCampanasEl.classList.toggle("roomy", grupos.length > 0 && grupos.length <= 4);
+    renderList(listCampanasEl, grupos, buildCampanaGroupCard, "Sin campañas creadas todavía.");
+    return;
+  }
   const grouped = groupCampanas(campanasDocs);
   countCampanasEl.textContent = grouped.length;
   listCampanasEl.classList.toggle("roomy", grouped.length > 0 && grouped.length <= 4);

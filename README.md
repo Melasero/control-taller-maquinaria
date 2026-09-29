@@ -35,6 +35,12 @@ service cloud.firestore {
     match /otsPlan/{doc} {
       allow read, write: if true;
     }
+    match /campanas/{doc} {
+      allow read, write: if true;
+    }
+    match /standbyManual/{doc} {
+      allow read, write: if true;
+    }
   }
 }
 ```
@@ -117,6 +123,19 @@ El sub-texto "X/Y OT cerradas hoy" y la flecha de tendencia que aparecen junto a
 | `createdAt` | number (ms) | Momento en que se cargó la OT |
 
 Se cargan semana a semana desde la pestaña "Plan" del celular. Si existe al menos una OT cuya `fechaProgramada` cae en la semana ISO actual, el % del widget "Avance del Plan Semanal" de la TV se calcula solo (`completadas / total`) y reemplaza al `avance` manual; se puede marcar cada OT como completada tocándola tanto en el celular como en el modal que abre el widget en la TV, y ambos quedan sincronizados en tiempo real.
+
+## Campañas de repuestos planificados (colección `campanas`)
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `nombreCampana` | string | Nombre de la campaña, ej. "Cambio de manguera hidráulica" |
+| `descripcion` | string | Detalle del repuesto/tarea (opcional) |
+| `equipo` | string | Código del equipo |
+| `completada` | boolean | Se marca tocando el ítem, desde el celular o desde la TV |
+| `completadaAt` | number \| null | Momento en que se marcó completada |
+| `createdAt` | number (ms) | Momento en que se creó ese ítem de la campaña |
+
+Al crear una campaña desde la pestaña "Campañas" del celular se genera **un documento por cada volquete de `flotaVolquetes`** (la lista de la pestaña Plan) — no hace falta elegir equipos uno por uno, siempre aplica a toda la flota. La TV muestra los pendientes agrupados por equipo en la columna "Campañas en Curso" (reemplaza a la antigua columna de Standby) y también dentro del tablero de pantalla completa de volquetes, con un resumen de avance por campaña y un contador por unidad.
 
 ## Observaciones (colección `observaciones`)
 

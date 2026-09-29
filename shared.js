@@ -42,6 +42,13 @@ export const STANDBY_ALERT_MS = 2 * 60 * 60 * 1000; // 2 horas
 // la colección "equipos".
 export const CAMPANAS_COLLECTION = "campanas";
 
+// Lista manual e independiente de "equipos en standby" (esperando que el
+// operador los recoja) — NO depende del estado "standby" de la colección
+// "equipos" (ese flujo automático ya no se usa: al terminar la reparación,
+// el equipo pasa directo a "entregado"). Se agrega y se quita a mano desde
+// la pestaña "Standby" del celular; al marcar el check se borra el registro.
+export const STANDBY_LIST_COLLECTION = "standbyManual";
+
 export const TIPOS_FALLA = ["Mecánica", "Eléctrica", "Hidráulica", "Soldadura", "Llantería", "Mantenimiento Preventivo", "Otro"];
 
 export const UBICACIONES_SUGERIDAS = ["Taller F", "Campo", "Punto G"];
