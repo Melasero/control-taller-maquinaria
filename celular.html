@@ -1014,6 +1014,7 @@ const campanaEmptyEl = document.getElementById("campanaEmpty");
 function groupCampanasPorNombre(list) {
   const map = {};
   list.forEach((c) => {
+    if (c.cerrada) return; // ya culminada — no se muestra más en la lista activa
     if (!map[c.nombreCampana]) map[c.nombreCampana] = { nombre: c.nombreCampana, items: [] };
     map[c.nombreCampana].items.push(c);
   });
@@ -1041,20 +1042,57 @@ function renderCampanaChecklist(g) {
     ${desc ? `<div class="hint" style="margin-bottom:12px;">${desc}</div>` : ""}
     <div class="hint" style="margin-bottom:12px;">${hechas}/${items.length} equipos completados — toca el check de cada uno al terminar</div>
     <div class="edit-form" style="max-height:56vh;">${rows}</div>
+    <button class="edit-link" id="btnCulminarCampana" style="color:var(--green); margin-top:14px;">✅ Culminar campaña</button>
   `;
   abAction.querySelectorAll("input[type=checkbox]").forEach((chk) => {
     chk.addEventListener("change", async () => {
       const completada = chk.checked;
+      const it = items.find((x) => x.id === chk.dataset.campId);
       try {
         await updateDoc(doc(db, CAMPANAS_COLLECTION, chk.dataset.campId), {
           completada,
           completadaAt: completada ? Date.now() : null
         });
+        if (it) it.completada = completada;
       } catch (e) {
         showToast("Error al guardar: " + e.message, "var(--red)");
         chk.checked = !completada;
       }
     });
+  });
+  document.getElementById("btnCulminarCampana").addEventListener("click", () => renderCampanaCulminarConfirm(g, items));
+}
+
+function renderCampanaCulminarConfirm(g, items) {
+  const pendientes = items.filter((i) => !i.completada).length;
+  abAction.innerHTML = `
+    <div class="hint" style="margin-bottom:16px;">
+      ${pendientes > 0
+        ? `Aún quedan <b>${pendientes}</b> equipo${pendientes === 1 ? "" : "s"} sin marcar. Al culminar, se marcarán como completados también y la campaña "${g.nombre}" se saca de la lista de activas (queda guardada en el historial de Firestore, no se borra).`
+        : `Los ${items.length} equipos ya están completados. Al culminar, la campaña "${g.nombre}" se saca de la lista de activas (queda guardada en el historial de Firestore, no se borra).`}
+    </div>
+    <div class="confirm-row">
+      <button class="btn cancel" id="fCulminarCancel">Cancelar</button>
+      <button class="btn confirm" id="fCulminarConfirmar">Sí, culminar</button>
+    </div>
+  `;
+  document.getElementById("fCulminarCancel").addEventListener("click", () => renderCampanaChecklist(g));
+  document.getElementById("fCulminarConfirmar").addEventListener("click", async () => {
+    try {
+      const batch = writeBatch(db);
+      items.forEach((it) => {
+        batch.update(doc(db, CAMPANAS_COLLECTION, it.id), {
+          cerrada: true,
+          completada: true,
+          completadaAt: it.completada ? it.completadaAt : Date.now()
+        });
+      });
+      await batch.commit();
+      showToast(`Campaña "${g.nombre}" culminada`);
+      closeActionbar();
+    } catch (e) {
+      showToast("Error al culminar: " + e.message, "var(--red)");
+    }
   });
 }
 
