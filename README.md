@@ -151,6 +151,8 @@ Al crear una campaña desde la pestaña "Campañas" del celular se genera **un d
 
 Son notas para un equipo que **sigue operativo en campo** (no está en mantenimiento ni en standby) — completamente independientes del flujo de `equipos`. Se crean y se resuelven desde la pestaña "Observación" del celular; la TV solo las agrupa por equipo y las muestra en modo lectura en la columna "Equipos con Observaciones".
 
+También se pueden cargar observaciones en lote con el botón **Cargar Excel** de esa columna en `tv.html`. La importación usa únicamente la hoja `OBS` y requiere su estructura en las columnas A-H: `FECHA`, `CODIGO`, `FRENTE`, `OBS`, `TURNO`, `SUPERVISOR`, `OT`, `STATUS`. Solo se agregan filas con fecha en A, equipo en B, descripción en D, supervisor en F y el valor `PENDIENTE` en H; las filas sin esos datos, sin estado o con otro estado se ignoran. Al abrir el detalle en la TV, cada nota muestra la fecha de observación y el supervisor. Si no hay observaciones pendientes completas, no se escribe ningún documento en Firestore. Las filas importadas se agregan como observaciones pendientes; no se reemplazan las existentes.
+
 ## Logo en la TV
 
 `tv.html` carga `logo-stracon.png` (junto a `tv.html` en la misma carpeta) para el logo centrado en la barra superior. Si subes los archivos a GitHub, asegúrate de incluir ese PNG en el mismo repositorio.

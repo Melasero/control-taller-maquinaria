@@ -160,6 +160,7 @@
   .ot-upload-btn:hover{ color: var(--accent); }
   .ot-upload-btn.error{ color: var(--red); }
   .ot-upload-btn:disabled{ cursor:default; opacity:0.7; }
+  #obsUploadBtn{ margin:0; }
   .metric-card.plan .plan-top{ display:flex; align-items:baseline; gap:8px; }
   .metric-card.plan .m-num{ color: var(--accent); font-size:24px; transition: color .3s ease; }
   .plan-sub{ font-size:10px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
@@ -201,12 +202,27 @@
     letter-spacing:0.03em; margin:0; line-height:1.2; color: var(--text-dim);
   }
   .count{
-    font-family:'IBM Plex Mono', monospace; font-size:11px; font-weight:600; color: var(--text-dim);
-    background: var(--panel-2); border:1px solid var(--border); padding:2px 9px; border-radius:999px;
-    font-variant-numeric: tabular-nums; flex-shrink:0;
+    display:inline-flex; align-items:center; gap:5px; line-height:1;
+    font-family:'IBM Plex Mono', monospace; font-size:11.5px; font-weight:700; color: var(--text-dim);
+    background: var(--panel-2); border:1px solid var(--border); padding:4px 10px 4px 8px; border-radius:999px;
+    font-variant-numeric: tabular-nums; flex-shrink:0; outline:none;
   }
-  .count.clickable{ cursor:pointer; transition: border-color .15s ease, color .15s ease; }
-  .count.clickable:hover{ border-color: var(--text-faint); color: var(--text); }
+  .count-icon{ width:12px; height:12px; flex-shrink:0; opacity:0.85; }
+  .count-arrow{ width:11px; height:11px; flex-shrink:0; opacity:0.55; transition: transform .15s ease, opacity .15s ease; }
+  .count.clickable{
+    cursor:pointer; appearance:none; -webkit-appearance:none; font:inherit;
+    transition: background .15s ease, border-color .15s ease, color .15s ease, transform .1s ease;
+  }
+  .count.clickable:hover{ background: var(--panel); border-color: var(--text-faint); color: var(--text); }
+  .count.clickable:hover .count-arrow{ transform: translate(1px,-1px); opacity:1; }
+  .count.clickable:active{ transform: scale(0.93); }
+  .count.clickable:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .count.clickable.tone-red{ color: var(--red); background: var(--red-dim); border-color: rgba(242,73,92,0.28); }
+  .count.clickable.tone-red:hover{ background: rgba(242,73,92,0.2); border-color: var(--red-line); color:#ff8a97; }
+  .count.clickable.tone-red.is-active{ background: var(--red); border-color: var(--red); color:#1a0508; box-shadow:0 0 0 3px var(--red-dim); }
+  .count.clickable.tone-yellow{ color: var(--yellow); background: var(--yellow-dim); border-color: rgba(251,191,36,0.28); }
+  .count.clickable.tone-yellow:hover{ background: rgba(251,191,36,0.2); border-color: var(--yellow-line); color: var(--yellow-bright); }
+  .count.clickable.tone-yellow.is-active{ background: var(--yellow); border-color: var(--yellow); color:#241a02; box-shadow:0 0 0 3px var(--yellow-dim); }
   .col-head-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
   .sort-toggle{
     font-family:'IBM Plex Mono', monospace; font-size:10px; font-weight:700; letter-spacing:0.03em;
@@ -338,6 +354,8 @@
   .obs-list{ margin-top:7px; display:flex; flex-direction:column; gap:5px; }
   .obs-item{ display:flex; align-items:flex-start; gap:7px; font-size:13px; line-height:1.4; color: var(--text); }
   .obs-item .bullet{ color: var(--yellow); font-size:8px; flex-shrink:0; margin-top:6px; }
+  .obs-note-detail{ flex:1; min-width:0; }
+  .obs-note-meta{ display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:5px; color:var(--text-faint); font-size:10.5px; line-height:1.4; }
 
   /* solo dentro del modal de detalle: cada nota se puede tocar para resolverla */
   .obs-item.clickable{
@@ -605,7 +623,7 @@
   </div>
   <div class="metric-card mttr-card">
     <span class="m-ind mttr-ind"></span>
-    <div><div class="m-num mttr-num" id="metricMttr">—</div><div class="m-label">MTTR (30 días)</div></div>
+    <div><div class="m-num mttr-num" id="metricMttr">—</div><div class="m-label" id="metricMttrLabel">MTTR</div></div>
   </div>
   <div class="metric-card plan volq-card" id="planCard" title="Ver las OT de esta semana">
     <div class="plan-row1">
@@ -645,7 +663,11 @@
       <div class="label"><span class="ind red"></span><h2>En mantenimiento</h2></div>
       <div class="col-head-right">
         <button class="sort-toggle" id="fallaSortToggle" title="Ordenar alfabéticamente por equipo">A-Z</button>
-        <div class="count clickable" id="countFalla" title="Ver todos en pantalla completa">0</div>
+        <button type="button" class="count clickable tone-red" id="countFalla" title="Ver los equipos en mantenimiento en pantalla completa" aria-pressed="false">
+          <svg class="count-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          <span class="count-num" id="countFallaNum">0</span>
+          <svg class="count-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M17 7H9M17 7V15"/></svg>
+        </button>
       </div>
     </div>
     <div class="list" id="listFalla"></div>
@@ -653,7 +675,11 @@
   <div class="column">
     <div class="col-head">
       <div class="label"><span class="ind yellow"></span><h2>Equipos con Observaciones</h2></div>
-      <div class="count clickable" id="countObs" title="Ver todos en pantalla completa">0</div>
+      <div class="col-head-right">
+        <button type="button" class="ot-upload-btn" id="obsUploadBtn" title="Cargar observaciones desde Excel">Cargar Excel</button>
+        <input type="file" id="obsUploadInput" accept=".xlsx,.xls" hidden>
+        <div class="count clickable" id="countObs" title="Ver todos en pantalla completa">0</div>
+      </div>
     </div>
     <div class="list" id="listObs"></div>
   </div>
@@ -771,13 +797,33 @@ function renderFallaTipos(enFalla){
   }
 }
 const metricMttrEl = document.getElementById("metricMttr");
+const metricMttrLabelEl = document.getElementById("metricMttrLabel");
+const MESES_MTTR = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+// Mes calendario en curso (no una ventana de 30 días) — al recalcularse usa
+// siempre el mes real de "ahora", así que en cuanto cruza a un mes nuevo,
+// el MTTR se arma solo con los datos de ese mes nuevo, sin arrastrar nada del anterior.
+// Incluye tanto las reparaciones ya cerradas este mes como las que siguen
+// abiertas ahora mismo (con las horas que llevan hasta este momento) — así un
+// caso largo (ej. 200h y contando) pesa en el promedio de inmediato, en vez de
+// aparecer recién el día que cierre.
 function renderMttr(){
-  const hace30d = Date.now() - 30 * 86400000;
-  const completados = fleet.filter(v => v.ingresoAt && v.operativoAt && v.operativoAt >= hace30d);
-  if(completados.length === 0){ metricMttrEl.textContent = "—"; return; }
-  const horas = completados.reduce((sum, v) => sum + (v.operativoAt - v.ingresoAt), 0) / completados.length / 3600000;
+  const hoy = new Date();
+  const mesStart = new Date(hoy.getFullYear(), hoy.getMonth(), 1).getTime();
+  metricMttrLabelEl.textContent = `MTTR (${MESES_MTTR[hoy.getMonth()]})`;
+
+  const cerrados = fleet.filter(v => v.ingresoAt && v.operativoAt && v.operativoAt >= mesStart);
+  const enCurso = fleet.filter(v => v.estado === ESTADOS.REPARACION && v.ingresoAt);
+  const totalCasos = cerrados.length + enCurso.length;
+  if(totalCasos === 0){ metricMttrEl.textContent = "—"; return; }
+
+  const horasCerrados = cerrados.reduce((sum, v) => sum + (v.operativoAt - v.ingresoAt), 0);
+  // si el equipo entró en un mes anterior y sigue abierto, solo se cuenta la parte
+  // de este mes (desde el 1°), no todo lo acumulado desde que entró originalmente.
+  const horasEnCurso = enCurso.reduce((sum, v) => sum + Math.max(0, Date.now() - Math.max(v.ingresoAt, mesStart)), 0);
+  const horas = (horasCerrados + horasEnCurso) / totalCasos / 3600000;
   metricMttrEl.textContent = horas.toFixed(1) + "h";
 }
+setInterval(renderMttr, 60000); // revisa el cambio de mes aunque no llegue ningún dato nuevo
 const FALLA_SORT_MODES = ["reciente", "alpha", "parada"];
 const FALLA_SORT_LABELS = { reciente: "Recientes", alpha: "A-Z", parada: "Parada &#8595;" };
 const FALLA_SORT_TITLES = {
@@ -1053,12 +1099,18 @@ function openObsModal(g){
   const itemsHtml = g.notas.map(n => `
     <div class="obs-item clickable" data-nota-id="${n.id}">
       <span class="obs-check"></span>
-      <span class="obs-text">${n.texto}</span>
+      <span class="obs-note-detail">
+        <span class="obs-text">${escapeHtml(n.texto)}</span>
+        <span class="obs-note-meta">
+          <span>Fecha de observación: ${new Date(n.fechaAt).toLocaleDateString("es-PE", { day:"2-digit", month:"2-digit", year:"numeric" })}</span>
+          <span>Supervisor: ${escapeHtml(n.supervisor || "No registrado")}</span>
+        </span>
+      </span>
     </div>
   `).join("");
   modalBox.innerHTML = `
     <div class="modal-head">
-      <div><div class="modal-eq-row">${equipoIcon(g.equipo)}<div class="modal-eq">${g.equipo}</div></div></div>
+      <div><div class="modal-eq-row">${equipoIcon(g.equipo)}<div class="modal-eq">${escapeHtml(g.equipo)}</div></div></div>
       <span class="modal-state yellow">Con observaciones</span>
     </div>
     <div class="modal-meta">${g.notas.length} nota${g.notas.length === 1 ? "" : "s"} pendiente${g.notas.length === 1 ? "" : "s"}${g.horometro != null ? `<span class="sep">&middot;</span>${g.horometro} HM` : ""}</div>
@@ -1080,6 +1132,11 @@ function openObsModal(g){
     });
   });
   modalBackdrop.classList.add("open");
+}
+function escapeHtml(value){
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  })[char]);
 }
 function closeModal(){ modalBackdrop.classList.remove("open"); planModalOpen = false; }
 modalBackdrop.addEventListener("click", (e) => { if(e.target === modalBackdrop) closeModal(); });
@@ -1520,7 +1577,12 @@ function groupObs(list){
   pending.forEach(o => {
     if(!map[o.equipo]) map[o.equipo] = { id: "obs-" + o.equipo, equipo: o.equipo, horometro: null, lastAt: 0, notas: [] };
     const g = map[o.equipo];
-    g.notas.push({ id: o.id, texto: o.texto });
+    g.notas.push({
+      id: o.id,
+      texto: o.texto,
+      fechaAt: o.fechaAt ?? o.createdAt ?? Date.now(),
+      supervisor: o.supervisor || ""
+    });
     if(o.horometro != null) g.horometro = o.horometro;
     if(o.createdAt > g.lastAt) g.lastAt = o.createdAt;
   });
@@ -1983,6 +2045,99 @@ otUploadInputEl.addEventListener("change", async () => {
   } finally {
     otUploadBtnEl.disabled = false;
     setTimeout(() => setUploadBtnEstado("Cargar Excel de OTs", false), 4000);
+  }
+});
+
+// ---------- carga rápida de observaciones desde la hoja OBS del Excel ----------
+const obsUploadBtnEl = document.getElementById("obsUploadBtn");
+const obsUploadInputEl = document.getElementById("obsUploadInput");
+
+function buscarTablaObservaciones(workbook){
+  const sheetName = workbook.SheetNames.find(nombre => normalizarTexto(nombre) === "obs");
+  if(!sheetName) throw new Error("no se encontró la hoja OBS");
+  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: true, defval: "" });
+  const expectedHeaders = ["fecha", "codigo", "frente", "obs", "turno", "supervisor", "ot", "status"];
+  const headers = rows[0] || [];
+  const validStructure = expectedHeaders.every((header, index) => normalizarTexto(headers[index]) === header);
+  if(!validStructure) throw new Error("la hoja OBS debe tener la estructura FECHA, CODIGO, FRENTE, OBS, TURNO, SUPERVISOR, OT, STATUS en las columnas A-H");
+  return { rows, sheetName };
+}
+
+function esObservacionPendiente(valor){
+  return normalizarTexto(valor) === "pendiente";
+}
+
+function filasObservacionPendiente(rows){
+  const items = [];
+  let incompletas = 0;
+  rows.slice(1).forEach(row => {
+    if(!row || row.every(cell => cell === "" || cell == null)) return;
+    if(!esObservacionPendiente(row[7])) return;
+    const equipo = String(row[1] ?? "").trim().toUpperCase();
+    const texto = String(row[3] ?? "").trim();
+    const fechaAt = excelValorAFecha(row[0]);
+    const supervisor = String(row[5] ?? "").trim();
+    if(!equipo || !texto || fechaAt == null || !supervisor){
+      incompletas++;
+      return;
+    }
+    items.push({ equipo, texto, fechaAt, supervisor });
+  });
+  return { items, incompletas };
+}
+
+function setObsUploadBtnEstado(texto, esError){
+  obsUploadBtnEl.textContent = texto;
+  obsUploadBtnEl.classList.toggle("error", !!esError);
+}
+
+obsUploadBtnEl.addEventListener("click", (e) => {
+  e.stopPropagation();
+  obsUploadInputEl.value = "";
+  obsUploadInputEl.click();
+});
+obsUploadInputEl.addEventListener("click", (e) => e.stopPropagation());
+
+obsUploadInputEl.addEventListener("change", async () => {
+  const file = obsUploadInputEl.files[0];
+  if(!file) return;
+  obsUploadBtnEl.disabled = true;
+  setObsUploadBtnEstado("Leyendo…", false);
+  try {
+    const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
+    const { rows, sheetName } = buscarTablaObservaciones(workbook);
+    const { items: observaciones, incompletas } = filasObservacionPendiente(rows);
+    const items = observaciones.map(({ equipo, texto, fechaAt, supervisor }) => ({
+        equipo,
+        empresa: "",
+        ubicacion: "",
+        horometro: null,
+        texto,
+        fechaAt,
+        supervisor,
+        resuelta: false,
+        createdAt: Date.now()
+    }));
+    if(items.length === 0){
+      setObsUploadBtnEstado("Sin observaciones pendientes", false);
+      mostrarToast("No hay pendientes completos con fecha, equipo, observación y supervisor en la hoja OBS");
+      return;
+    }
+
+    for(let i = 0; i < items.length; i += 450){
+      const batch = writeBatch(db);
+      items.slice(i, i + 450).forEach(item => batch.set(doc(collection(db, OBS_COLLECTION)), item));
+      await batch.commit();
+    }
+    setObsUploadBtnEstado(`${items.length} cargadas ✓`, false);
+    mostrarToast(`${items.length} observaciones cargadas${incompletas ? ` · ${incompletas} pendientes incompletas omitidas` : ""} desde ${sheetName}`);
+  } catch(e){
+    console.error(e);
+    setObsUploadBtnEstado("Error al cargar Excel", true);
+    mostrarToast(`No se pudo cargar el Excel: ${e.message}`);
+  } finally {
+    obsUploadBtnEl.disabled = false;
+    setTimeout(() => setObsUploadBtnEstado("Cargar Excel", false), 5000);
   }
 });
 
