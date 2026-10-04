@@ -161,6 +161,14 @@
   .ot-upload-btn.error{ color: var(--red); }
   .ot-upload-btn:disabled{ cursor:default; opacity:0.7; }
   #obsUploadBtn{ margin:0; }
+  .obs-equipo-filter{
+    width:84px; min-width:0; height:22px; padding:2px 8px;
+    border:1px solid var(--border); border-radius:999px; outline:none;
+    background:var(--panel-2); color:var(--text); font:700 9px 'IBM Plex Mono',monospace;
+    text-transform:uppercase; letter-spacing:.02em;
+  }
+  .obs-equipo-filter::placeholder{ color:var(--text-faint); opacity:1; }
+  .obs-equipo-filter:focus{ border-color:var(--yellow-line); }
   .metric-card.plan .plan-top{ display:flex; align-items:baseline; gap:8px; }
   .metric-card.plan .m-num{ color: var(--accent); font-size:24px; transition: color .3s ease; }
   .plan-sub{ font-size:10px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
@@ -352,24 +360,29 @@
 
   /* tarjeta de "Equipos con Observaciones": solo equipo + notas, sin cronómetro */
   .obs-list{ margin-top:7px; display:flex; flex-direction:column; gap:5px; }
+  .obs-summary{ margin-top:6px; color:var(--text-muted); font-size:12px; font-weight:600; }
+  .obs-summary .pending{ color:var(--yellow); }
+  .obs-summary .done{ color:var(--green); }
   .obs-item{ display:flex; align-items:flex-start; gap:7px; font-size:13px; line-height:1.4; color: var(--text); }
   .obs-item .bullet{ color: var(--yellow); font-size:8px; flex-shrink:0; margin-top:6px; }
   .obs-note-detail{ flex:1; min-width:0; }
   .obs-note-meta{ display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:5px; color:var(--text-faint); font-size:10.5px; line-height:1.4; }
+  .obs-item.resuelta .obs-text{ color:var(--text-faint); text-decoration:line-through; text-decoration-thickness:2px; }
 
-  /* solo dentro del modal de detalle: cada nota se puede tocar para resolverla */
+  /* Dentro del modal de detalle, el check conserva las notas resueltas tachadas. */
   .obs-item.clickable{
     gap:8px; cursor:pointer; padding:4px 5px; margin:-4px -5px; border-radius:7px;
-    transition: background .15s ease, opacity .25s ease, transform .25s ease;
+    transition: background .15s ease;
   }
   .obs-item.clickable:hover{ background: rgba(255,255,255,0.05); }
-  .obs-item.clickable.resolviendo{ opacity:0; transform: translateX(10px); }
   .obs-check{
     width:16px; height:16px; flex-shrink:0; margin-top:1px; border-radius:5px; border:2px solid var(--yellow-line);
     display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; color:transparent;
     transition: background .15s ease, border-color .15s ease;
   }
-  .obs-item.resolviendo .obs-check{ background: var(--green); border-color: var(--green); color:#06210f; }
+  .obs-item.resuelta .obs-check{ background: var(--green); border-color: var(--green); color:#06210f; }
+  .obs-item.resuelta .obs-check::after{ content:"✓"; }
+  .obs-item.updating{ opacity:.65; pointer-events:none; }
 
   /* ---- modal de detalle ---- */
   .modal-backdrop{
@@ -378,6 +391,7 @@
     opacity:0; pointer-events:none; transition: opacity .18s ease;
   }
   .modal-backdrop.open{ opacity:1; pointer-events:auto; }
+  .board-overlay.modal-detail-open{ z-index:40; }
   .modal{
     width:100%; max-width:520px; max-height:calc(100vh - 48px); overflow-y:auto;
     background: var(--panel-2); border:1px solid var(--border); border-radius:14px;
@@ -496,6 +510,22 @@
   .board-overlay-sub{
     margin-left:auto; font-family:'IBM Plex Mono', monospace; color:#8fa0b3; font-size:13px; letter-spacing:0.05em;
   }
+  .obs-filter-bar{ display:flex; align-items:center; gap:5px; flex-shrink:0; }
+  .obs-filter-bar[hidden]{ display:none; }
+  .obs-filter-btn{
+    border:1px solid var(--border-2); border-radius:999px; padding:7px 11px; cursor:pointer;
+    background:var(--panel-2); color:var(--text-dim); font:700 10px 'IBM Plex Mono',monospace;
+    text-transform:uppercase; letter-spacing:.03em; white-space:nowrap;
+  }
+  .obs-filter-btn:hover{ border-color:var(--text-faint); color:var(--text); }
+  .obs-filter-btn.active{ background:var(--yellow-dim); border-color:var(--yellow-line); color:var(--yellow-bright); }
+  .obs-filter-btn.full-card{ border-color:rgba(168,85,247,0.38); color:#c4a1e8; }
+  .obs-filter-btn.full-card:hover{ border-color:rgba(192,132,252,0.65); color:#e2c8ff; }
+  .obs-filter-btn.full-card.active{
+    background:rgba(168,85,247,0.12); border-color:rgba(192,132,252,0.62); color:#e2c8ff;
+    box-shadow:0 0 10px rgba(168,85,247,0.2), inset 0 0 8px rgba(168,85,247,0.06);
+  }
+  .obs-filter-empty{ grid-column:1/-1; color:var(--text-faint); padding:24px; text-align:center; }
   .board-overlay-hours{
     font-family:'IBM Plex Mono', monospace; font-size:13px; font-weight:700; letter-spacing:0.04em;
     color: var(--red); background: rgba(242,73,92,0.12); padding:5px 12px; border-radius:999px; white-space:nowrap;
@@ -577,6 +607,19 @@
     font-size:10px; font-weight:800; text-transform:uppercase; color: var(--yellow); background: var(--yellow-dim);
     padding:3px 8px; border-radius:999px; white-space:nowrap; flex-shrink:0; align-self:flex-start;
   }
+  .bcard.obs.full{ border-color:rgba(168,85,247,0.28); border-left-color:#a855f7; }
+  .bcard.obs.full .bcard-top{
+    display:block; padding-bottom:7px; border-bottom:1px solid rgba(168,85,247,0.18);
+  }
+  .bcard.obs.full .bcard-code{ display:block; }
+  .bcard.obs.full .bcard-tipo{
+    display:block; margin-top:4px; white-space:normal; overflow-wrap:anywhere;
+  }
+  .bcard-obs-list{ display:flex; flex-direction:column; gap:8px; }
+  .bcard-obs-row{ display:flex; align-items:flex-start; gap:8px; font-size:12px; line-height:1.4; color:var(--text); }
+  .bcard-obs-number{ min-width:19px; color:#c4a1e8; font:700 11px 'IBM Plex Mono',monospace; text-align:right; flex-shrink:0; }
+  .bcard-obs-text{ min-width:0; overflow-wrap:anywhere; }
+  .bcard-obs-row.resuelta .bcard-obs-text{ color:var(--text-faint); text-decoration:line-through; text-decoration-thickness:1px; }
 
   /* campaña: cada tarjeta tiene su check, y se queda con el check marcado — nunca desaparece */
   .bcard.camp{ border-left-color: var(--border); }
@@ -678,6 +721,7 @@
       <div class="col-head-right">
         <button type="button" class="ot-upload-btn" id="obsUploadBtn" title="Cargar observaciones desde Excel">Cargar Excel</button>
         <input type="file" id="obsUploadInput" accept=".xlsx,.xls" hidden>
+        <input type="search" class="obs-equipo-filter" id="obsEquipoFilter" placeholder="Equipo" aria-label="Filtrar observaciones por código de equipo" autocomplete="off" spellcheck="false">
         <div class="count clickable" id="countObs" title="Ver todos en pantalla completa">0</div>
       </div>
     </div>
@@ -688,6 +732,7 @@
       <div class="label"><span class="ind blue"></span><h2>Campañas en Curso</h2></div>
       <div class="col-head-right">
         <button class="sort-toggle" id="campanasViewToggle" title="Cambiar entre vista Lista y vista Grupo">Lista</button>
+        <button class="sort-toggle" id="campanasBackupToggle" title="Ver campañas completamente terminadas">Backup</button>
         <div class="count" id="countCampanas">0</div>
       </div>
     </div>
@@ -705,6 +750,12 @@
 <div class="board-overlay" id="boardOverlay">
   <div class="board-overlay-head">
     <div class="board-overlay-title"><span class="board-dot"></span><span id="boardOverlayTitleText">ESTADO DE FLOTA &middot; VOLQUETES</span></div>
+    <div class="obs-filter-bar" id="obsFilterBar" hidden>
+      <button type="button" class="obs-filter-btn active" data-obs-filter="pendientes">Pendientes</button>
+      <button type="button" class="obs-filter-btn" data-obs-filter="tachadas">Tachadas</button>
+      <button type="button" class="obs-filter-btn" data-obs-filter="todas">Todas</button>
+      <button type="button" class="obs-filter-btn full-card" data-obs-filter="full">Full tarjeta</button>
+    </div>
     <div class="board-overlay-sub" id="boardOverlaySub">—</div>
     <div class="board-overlay-hours" id="boardOverlayHours" hidden></div>
     <button type="button" class="board-overlay-close" id="boardOverlayClose" aria-label="Cerrar">&times;</button>
@@ -857,6 +908,7 @@ function renderCampanasHoy(){
 const nodeMap = {};
 let fleet = [];
 let obsDocs = [];
+let obsSnapshotReady = false;
 
 // ---------- helpers de color / íconos ----------
 const TIPO_FALLA_COLOR = {
@@ -1046,7 +1098,8 @@ function buildObsCard(g){
   const card = document.createElement("div");
   card.className = "card yellow";
   card.dataset.id = g.id;
-  const itemsHtml = g.notas.map(n => `<div class="obs-item"><span class="bullet">&#9679;</span><span>${n.texto}</span></div>`).join("");
+  const pendientes = g.notas.filter(n => !n.resuelta).length;
+  const realizadas = g.notas.length - pendientes;
   card.innerHTML = `
     <div class="card-head">
       <div class="card-head-left">
@@ -1054,7 +1107,7 @@ function buildObsCard(g){
       </div>
       <div class="card-head-right"><div class="head-date">últ. ${formatDateTime(g.lastAt)}</div></div>
     </div>
-    <div class="obs-list">${itemsHtml}</div>
+    <div class="obs-summary"><span class="pending">${pendientes} pendiente${pendientes === 1 ? "" : "s"}</span>${realizadas ? ` <span aria-hidden="true">·</span> <span class="done">${realizadas} realizada${realizadas === 1 ? "" : "s"}</span>` : ""}</div>
   `;
   card.addEventListener("click", () => openObsModal(g));
   return card;
@@ -1097,12 +1150,13 @@ function openModal(v, color, stateLabel){
 function openObsModal(g){
   planModalOpen = false;
   const itemsHtml = g.notas.map(n => `
-    <div class="obs-item clickable" data-nota-id="${n.id}">
+    <div class="obs-item clickable${n.resuelta ? " resuelta" : ""}" data-nota-id="${n.id}" role="checkbox" aria-checked="${!!n.resuelta}" tabindex="0">
       <span class="obs-check"></span>
       <span class="obs-note-detail">
         <span class="obs-text">${escapeHtml(n.texto)}</span>
         <span class="obs-note-meta">
-          <span>Fecha de observación: ${new Date(n.fechaAt).toLocaleDateString("es-PE", { day:"2-digit", month:"2-digit", year:"numeric" })}</span>
+          <span>Fecha: ${new Date(n.fechaAt).toLocaleDateString("es-PE", { day:"2-digit", month:"2-digit", year:"numeric" })}</span>
+          <span>OT: ${escapeHtml(n.ot || "No registrada")}</span>
           <span>Supervisor: ${escapeHtml(n.supervisor || "No registrado")}</span>
         </span>
       </span>
@@ -1111,24 +1165,42 @@ function openObsModal(g){
   modalBox.innerHTML = `
     <div class="modal-head">
       <div><div class="modal-eq-row">${equipoIcon(g.equipo)}<div class="modal-eq">${escapeHtml(g.equipo)}</div></div></div>
-      <span class="modal-state yellow">Con observaciones</span>
+      <span class="modal-state yellow">Observaciones</span>
     </div>
-    <div class="modal-meta">${g.notas.length} nota${g.notas.length === 1 ? "" : "s"} pendiente${g.notas.length === 1 ? "" : "s"}${g.horometro != null ? `<span class="sep">&middot;</span>${g.horometro} HM` : ""}</div>
-    <div class="modal-meta" style="margin-top:2px;">Toca una nota para marcarla resuelta</div>
+    <div class="modal-meta">${g.notas.filter(n => !n.resuelta).length} pendientes<span class="sep">&middot;</span>${g.notas.filter(n => n.resuelta).length} tachadas${g.horometro != null ? `<span class="sep">&middot;</span>${g.horometro} HM` : ""}</div>
+    <div class="modal-meta" style="margin-top:2px;">Toca el check para tachar o restaurar una observación</div>
     <div class="obs-list" style="margin-top:16px;">${itemsHtml}</div>
   `;
   modalBox.querySelectorAll(".obs-item.clickable").forEach(itemEl => {
-    itemEl.addEventListener("click", () => {
-      if(itemEl.classList.contains("resolviendo")) return;
-      const notaId = itemEl.dataset.notaId;
-      const texto = itemEl.querySelector(".obs-text").textContent;
-      itemEl.classList.add("resolviendo");
-      mostrarToast(`Observación levantada — ${g.equipo}: ${texto}`);
-      setTimeout(() => {
-        if(itemEl.parentNode) itemEl.remove();
-        if(!modalBox.querySelector(".obs-item")) closeModal();
-      }, 260);
-      deleteDoc(doc(db, OBS_COLLECTION, notaId)).catch(err => console.error(err));
+    const toggleResuelta = async () => {
+      if(itemEl.classList.contains("updating")) return;
+      const nota = g.notas.find(n => n.id === itemEl.dataset.notaId);
+      if(!nota) return;
+      const resuelta = !nota.resuelta;
+      itemEl.classList.add("updating");
+      try {
+        await updateDoc(doc(db, OBS_COLLECTION, nota.id), { resuelta });
+        nota.resuelta = resuelta;
+        itemEl.classList.toggle("resuelta", resuelta);
+        itemEl.setAttribute("aria-checked", String(resuelta));
+        modalBox.querySelector(".modal-head .modal-state").textContent = resuelta ? "Observaciones tachadas" : "Observaciones";
+        const pendientes = g.notas.filter(n => !n.resuelta).length;
+        const tachadas = g.notas.length - pendientes;
+        modalBox.querySelector(".modal-meta").innerHTML = `${pendientes} pendientes<span class="sep">&middot;</span>${tachadas} tachadas${g.horometro != null ? `<span class="sep">&middot;</span>${g.horometro} HM` : ""}`;
+        mostrarToast(resuelta ? "Observación tachada; se conserva en Firebase" : "Observación restaurada");
+      } catch(err) {
+        console.error(err);
+        mostrarToast("No se pudo actualizar la observación: " + err.message);
+      } finally {
+        itemEl.classList.remove("updating");
+      }
+    };
+    itemEl.addEventListener("click", toggleResuelta);
+    itemEl.addEventListener("keydown", (event) => {
+      if(event.key === "Enter" || event.key === " "){
+        event.preventDefault();
+        toggleResuelta();
+      }
     });
   });
   modalBackdrop.classList.add("open");
@@ -1138,7 +1210,11 @@ function escapeHtml(value){
     "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
   })[char]);
 }
-function closeModal(){ modalBackdrop.classList.remove("open"); planModalOpen = false; }
+function closeModal(){
+  modalBackdrop.classList.remove("open");
+  boardOverlayEl.classList.remove("modal-detail-open");
+  planModalOpen = false;
+}
 modalBackdrop.addEventListener("click", (e) => { if(e.target === modalBackdrop) closeModal(); });
 document.addEventListener("keydown", (e) => { if(e.key === "Escape"){ closeModal(); closeBoardOverlay(); } });
 
@@ -1227,7 +1303,10 @@ const boardOverlayTitleTextEl = document.getElementById("boardOverlayTitleText")
 const boardOverlaySubEl = document.getElementById("boardOverlaySub");
 const boardOverlayHoursEl = document.getElementById("boardOverlayHours");
 const boardOverlayGridEl = document.getElementById("boardOverlayGrid");
-function closeBoardOverlay(){ boardOverlayEl.classList.remove("open"); }
+function closeBoardOverlay(){
+  boardOverlayEl.classList.remove("open", "obs-view");
+  obsFilterBarEl.hidden = true;
+}
 document.getElementById("boardOverlayClose").addEventListener("click", closeBoardOverlay);
 
 // Suma las horas inoperativas SOLO de los volquetes de flotaVolquetes que están
@@ -1341,28 +1420,80 @@ countFallaEl.addEventListener("click", (e) => { e.stopPropagation(); openManteni
 function openObservacionesFullscreen(){
   planModalOpen = false;
   boardOverlayHoursEl.hidden = true;
-  boardOverlayTitleTextEl.textContent = "EQUIPOS CON OBSERVACIONES";
-  const grupos = groupObs(obsDocs);
-  boardOverlaySubEl.textContent = `${grupos.length} EQUIPO${grupos.length === 1 ? "" : "S"}`;
+  boardOverlayEl.classList.add("obs-view");
+  obsFilterBarEl.hidden = false;
+  obsFullscreenFilter = "full";
+  renderObservacionesFullscreen();
+  boardOverlayEl.classList.add("open");
+}
+function renderObservacionesFullscreen(){
+  const filterLabels = { pendientes:"PENDIENTES", tachadas:"TACHADAS", todas:"TODAS", full:"FULL TARJETA" };
+  boardOverlayTitleTextEl.textContent = `OBSERVACIONES · ${filterLabels[obsFullscreenFilter]}`;
+  obsFilterBarEl.querySelectorAll("[data-obs-filter]").forEach(button => {
+    button.classList.toggle("active", button.dataset.obsFilter === obsFullscreenFilter);
+  });
+  const grupos = filtrarGruposPorEquipo(
+    groupObs(obsDocs, obsFullscreenFilter === "full" ? "todas" : obsFullscreenFilter),
+    obsEquipoFilterEl.value
+  );
+  const cantidad = obsDocs.filter(o => {
+    if(obsFullscreenFilter === "tachadas") return !!o.resuelta;
+    if(obsFullscreenFilter === "todas" || obsFullscreenFilter === "full") return true;
+    return !o.resuelta;
+  }).length;
+  boardOverlaySubEl.textContent = `${cantidad} OBSERVACIÓN${cantidad === 1 ? "" : "ES"} · ${grupos.length} EQUIPO${grupos.length === 1 ? "" : "S"}`;
 
-  boardOverlayGridEl.innerHTML = grupos.map(g => `
-    <div class="bcard obs clickable" data-id="${g.id}">
-      <div class="bcard-top"><span class="bcard-code">${g.equipo}</span><span class="bcard-tipo">${tipoEquipoDe(g.equipo).singular}</span></div>
-      <div class="bcard-bottom">
-        <div class="bcard-note">${g.notas[0].texto}</div>
-        ${g.notas.length > 1 ? `<span class="bcard-note-count">+${g.notas.length - 1} más</span>` : ""}
-      </div>
+  boardOverlayGridEl.innerHTML = grupos.length ? grupos.map(g => `
+    <div class="bcard obs clickable${obsFullscreenFilter === "full" ? " full" : ""}" data-id="${g.id}">
+      <div class="bcard-top"><span class="bcard-code">${escapeHtml(g.equipo)}</span><span class="bcard-tipo">${tipoEquipoDe(g.equipo).singular} · ${g.notas.length} ${g.notas.length === 1 ? "observación" : "observaciones"}</span></div>
+      ${obsFullscreenFilter === "full" ? `
+        <div class="bcard-obs-list">${g.notas.map((nota, index) => `
+          <div class="bcard-obs-row${nota.resuelta ? " resuelta" : ""}">
+            <span class="bcard-obs-number">${index + 1}.</span>
+            <span class="bcard-obs-text">${escapeHtml(nota.texto)}</span>
+          </div>
+        `).join("")}</div>
+      ` : `
+        <div class="bcard-bottom">
+          <div class="bcard-note">${escapeHtml(g.notas[0].texto)}</div>
+          ${g.notas.length > 1 ? `<span class="bcard-note-count">+${g.notas.length - 1} más</span>` : ""}
+        </div>
+      `}
     </div>
-  `).join("");
+  `).join("") : `<div class="obs-filter-empty">No hay observaciones ${filterLabels[obsFullscreenFilter].toLowerCase()}.</div>`;
 
   boardOverlayGridEl.querySelectorAll(".bcard.obs").forEach(row => {
     row.addEventListener("click", () => {
       const g = grupos.find(x => x.id === row.dataset.id);
-      if(g){ closeBoardOverlay(); openObsModal(g); }
+      if(g){
+        boardOverlayEl.classList.add("modal-detail-open");
+        openObsModal(g);
+      }
     });
   });
-  boardOverlayEl.classList.add("open");
 }
+const obsFilterBarEl = document.getElementById("obsFilterBar");
+let obsFullscreenFilter = "pendientes";
+const obsEquipoFilterEl = document.getElementById("obsEquipoFilter");
+function codigoEquipoNormalizado(valor){
+  return String(valor ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/^([A-Z]*?)0+(?=\d)/, "$1");
+}
+function filtrarGruposPorEquipo(grupos, valor){
+  const filtro = codigoEquipoNormalizado(valor);
+  if(!filtro) return grupos;
+  return grupos.filter(g => codigoEquipoNormalizado(g.equipo).includes(filtro));
+}
+obsEquipoFilterEl.addEventListener("input", () => {
+  renderObs();
+  if(boardOverlayEl.classList.contains("obs-view")) renderObservacionesFullscreen();
+});
+obsFilterBarEl.querySelectorAll("[data-obs-filter]").forEach(button => {
+  button.addEventListener("click", () => {
+    obsFullscreenFilter = button.dataset.obsFilter;
+    renderObservacionesFullscreen();
+  });
+});
 countObsEl.addEventListener("click", (e) => { e.stopPropagation(); openObservacionesFullscreen(); });
 
 // ---------- resumen de "Equipos en Mantenimiento" por tipo (volquete / cisterna / rodillo / etc.) ----------
@@ -1571,17 +1702,23 @@ function tickTimers(){
 setInterval(tickTimers, 1000);
 
 // ---------- Equipos con Observaciones (independiente del flujo de mantenimiento) ----------
-function groupObs(list){
-  const pending = list.filter(o => !o.resuelta);
+function groupObs(list, filter = "pendientes"){
+  const matching = list.filter(o => {
+    if(filter === "tachadas") return !!o.resuelta;
+    if(filter === "todas") return true;
+    return !o.resuelta;
+  });
   const map = {};
-  pending.forEach(o => {
+  matching.forEach(o => {
     if(!map[o.equipo]) map[o.equipo] = { id: "obs-" + o.equipo, equipo: o.equipo, horometro: null, lastAt: 0, notas: [] };
     const g = map[o.equipo];
     g.notas.push({
       id: o.id,
       texto: o.texto,
       fechaAt: o.fechaAt ?? o.createdAt ?? Date.now(),
-      supervisor: o.supervisor || ""
+      ot: o.ot || "",
+      supervisor: o.supervisor || "",
+      resuelta: !!o.resuelta
     });
     if(o.horometro != null) g.horometro = o.horometro;
     if(o.createdAt > g.lastAt) g.lastAt = o.createdAt;
@@ -1589,7 +1726,10 @@ function groupObs(list){
   return Object.values(map).sort((a,b) => a.equipo.localeCompare(b.equipo, "es"));
 }
 function renderObs(){
-  const grouped = groupObs(obsDocs);
+  const grouped = filtrarGruposPorEquipo(
+    groupObs(obsDocs, "todas").filter(g => g.notas.some(n => !n.resuelta)),
+    obsEquipoFilterEl.value
+  );
   countObsEl.textContent = grouped.length;
   listObsEl.classList.toggle("roomy", grouped.length > 0 && grouped.length <= 4);
   renderList(listObsEl, grouped, buildObsCard, "Sin observaciones pendientes.");
@@ -1597,7 +1737,9 @@ function renderObs(){
 const qObs = query(collection(db, OBS_COLLECTION), orderBy("createdAt", "desc"));
 onSnapshot(qObs, (snap) => {
   obsDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  obsSnapshotReady = true;
   renderObs();
+  if(boardOverlayEl.classList.contains("obs-view")) renderObservacionesFullscreen();
 }, (err) => console.error(err));
 
 // ---------- campañas en curso (repuestos planificados) ----------
@@ -1607,6 +1749,8 @@ onSnapshot(qObs, (snap) => {
 let campanasDocs = [];
 let campanasViewMode = "grupo";
 const campanasViewToggleEl = document.getElementById("campanasViewToggle");
+const campanasBackupToggleEl = document.getElementById("campanasBackupToggle");
+let campanasBackupMode = false;
 const CAMPANAS_VIEW_LABEL = { lista: "Lista", grupo: "Grupo" };
 const CAMPANAS_VIEW_TITLE = {
   lista: "Vista actual: Lista (una tarjeta por equipo). Toca para ver por Grupo.",
@@ -1622,28 +1766,63 @@ campanasViewToggleEl.addEventListener("click", () => {
   actualizarCampanasViewToggle();
   renderCampanas();
 });
+campanasBackupToggleEl.addEventListener("click", () => {
+  campanasBackupMode = !campanasBackupMode;
+  campanasBackupToggleEl.classList.toggle("active", campanasBackupMode);
+  campanasBackupToggleEl.setAttribute("aria-pressed", String(campanasBackupMode));
+  campanasBackupToggleEl.title = campanasBackupMode
+    ? "Ver campañas en curso"
+    : "Ver campañas completamente terminadas";
+  renderCampanas();
+});
 actualizarCampanasViewToggle();
 
-function groupCampanas(list){
-  const pending = list.filter(c => !c.completada);
+function groupCampanas(list, filter = "pendientes"){
+  const matching = list.filter(c => filter === "backup" ? !!c.completada : !c.completada);
   const map = {};
-  pending.forEach(c => {
+  matching.forEach(c => {
     if(!map[c.equipo]) map[c.equipo] = { id: "camp-" + c.equipo, equipo: c.equipo, lastAt: 0, items: [] };
     const g = map[c.equipo];
-    g.items.push({ id: c.id, nombreCampana: c.nombreCampana, descripcion: c.descripcion });
+    g.items.push({
+      id: c.id,
+      nombreCampana: c.nombreCampana,
+      descripcion: c.descripcion,
+      completada: !!c.completada,
+      completadaAt: c.completadaAt || null,
+      createdAt: c.createdAt || 0
+    });
     if(c.createdAt > g.lastAt) g.lastAt = c.createdAt;
   });
-  return Object.values(map).sort((a,b) => a.equipo.localeCompare(b.equipo, "es"));
+  return Object.values(map).map(g => ({
+    ...g,
+    ultimaCompletadaAt: fechaCampanaCompletada(g.items)
+  })).sort((a,b) =>
+    (b.ultimaCompletadaAt || b.lastAt) - (a.ultimaCompletadaAt || a.lastAt)
+    || a.equipo.localeCompare(b.equipo, "es")
+  );
 }
 
-// Vista "grupo": todas las campañas (hechas y pendientes) agrupadas por nombre.
 function groupCampanasPorNombre(list){
   const map = {};
   list.forEach(c => {
     if(!map[c.nombreCampana]) map[c.nombreCampana] = { id: "campgroup-" + c.nombreCampana, nombre: c.nombreCampana, descripcion: c.descripcion, items: [] };
     map[c.nombreCampana].items.push(c);
   });
-  return Object.values(map).sort((a,b) => a.nombre.localeCompare(b.nombre, "es"));
+  return Object.values(map).map(g => ({
+    ...g,
+    ultimaCompletadaAt: fechaCampanaCompletada(g.items),
+    ultimaActividadAt: Math.max(...g.items.map(item => item.completadaAt || item.createdAt || 0))
+  })).sort((a,b) =>
+    (b.ultimaCompletadaAt || b.ultimaActividadAt) - (a.ultimaCompletadaAt || a.ultimaActividadAt)
+    || a.nombre.localeCompare(b.nombre, "es")
+  );
+}
+
+function fechaCampanaCompletada(items){
+  return items.reduce((latest, item) => {
+    const fecha = item.completada ? Number(item.completadaAt) : 0;
+    return Number.isFinite(fecha) && fecha > latest ? fecha : latest;
+  }, 0);
 }
 
 function buildCampanaGroupCard(g){
@@ -1653,13 +1832,19 @@ function buildCampanaGroupCard(g){
   const total = g.items.length;
   const hechas = g.items.filter(it => it.completada).length;
   const pct = total > 0 ? Math.round((hechas / total) * 100) : 0;
+  const fechaHtml = g.ultimaCompletadaAt
+    ? `<div class="head-date">Última marcada: ${formatDateTime(g.ultimaCompletadaAt)}</div>`
+    : "";
   card.innerHTML = `
     <div class="card-head">
       <div class="card-head-left">
         <div class="eq-name-row"><div class="eq-name">${g.nombre}</div></div>
         ${g.descripcion ? `<div class="falla-desc">${g.descripcion}</div>` : ""}
       </div>
-      <div class="card-head-right"><div class="head-timer" style="color:var(--accent);">${hechas}/${total}</div></div>
+      <div class="card-head-right">
+        <div class="head-timer" style="color:var(--accent);">${hechas}/${total}</div>
+        ${fechaHtml}
+      </div>
     </div>
     <div class="metric-bar" style="margin-top:9px;"><div class="metric-bar-fill" style="width:${pct}%;"></div></div>
   `;
@@ -1672,7 +1857,10 @@ function openCampanaFullscreen(nombreCampana){
   boardOverlayHoursEl.hidden = true;
   const items = campanasDocs
     .filter(c => c.nombreCampana === nombreCampana)
-    .sort((a,b) => a.equipo.localeCompare(b.equipo, "es"));
+    .sort((a,b) =>
+      (b.completadaAt || (b.completada ? 0 : b.createdAt || 0)) - (a.completadaAt || (a.completada ? 0 : a.createdAt || 0))
+      || a.equipo.localeCompare(b.equipo, "es")
+    );
 
   boardOverlayTitleTextEl.textContent = nombreCampana;
   const actualizarSub = () => {
@@ -1686,7 +1874,9 @@ function openCampanaFullscreen(nombreCampana){
       <div class="bcard-top"><span class="bcard-code">${it.equipo}</span><span class="bcard-tipo">${tipoEquipoDe(it.equipo).singular}</span></div>
       <div class="bcard-bottom">
         <span class="bcard-check">${it.completada ? "&#10003;" : ""}</span>
-        <span class="bcard-check-label">${it.completada ? "Hecho" : "Pendiente"}</span>
+        <span class="bcard-check-label">${it.completada
+          ? `Hecho · ${it.completadaAt ? formatDateTime(it.completadaAt) : "fecha no registrada"}`
+          : "Pendiente"}</span>
       </div>
     </div>
   `).join("");
@@ -1702,7 +1892,10 @@ function openCampanaFullscreen(nombreCampana){
       const checkEl = row.querySelector(".bcard-check");
       if(checkEl) checkEl.innerHTML = nuevoValor ? "&#10003;" : "";
       const labelEl = row.querySelector(".bcard-check-label");
-      if(labelEl) labelEl.textContent = nuevoValor ? "Hecho" : "Pendiente";
+      it.completadaAt = nuevoValor ? Date.now() : null;
+      if(labelEl) labelEl.textContent = nuevoValor
+        ? `Hecho · ${formatDateTime(it.completadaAt)}`
+        : "Pendiente";
       actualizarSub();
       updateDoc(doc(db, CAMPANAS_COLLECTION, it.id), {
         completada: nuevoValor,
@@ -1717,7 +1910,12 @@ function buildCampanaCard(g){
   const card = document.createElement("div");
   card.className = "card blue";
   card.dataset.id = g.id;
-  const itemsHtml = g.items.map(it => `<div class="obs-item"><span class="bullet">&#9679;</span><span>${it.nombreCampana}${it.descripcion ? " — " + it.descripcion : ""}</span></div>`).join("");
+  const itemsHtml = g.items.map(it => `
+    <div class="obs-item">
+      <span class="bullet">&#9679;</span>
+      <span>${escapeHtml(it.nombreCampana)}${it.descripcion ? " — " + escapeHtml(it.descripcion) : ""}${campanasBackupMode ? `<span class="obs-note-meta">${it.completadaAt ? `Marcada: ${formatDateTime(it.completadaAt)}` : "Fecha no registrada"}</span>` : ""}</span>
+    </div>
+  `).join("");
   card.innerHTML = `
     <div class="card-head">
       <div class="card-head-left">
@@ -1734,32 +1932,43 @@ function buildCampanaCard(g){
 function openCampanaModal(g){
   planModalOpen = false;
   const itemsHtml = g.items.map(it => `
-    <div class="obs-item clickable" data-item-id="${it.id}">
+    <div class="obs-item clickable${it.completada ? " resuelta" : ""}" data-item-id="${it.id}">
       <span class="obs-check"></span>
-      <span class="obs-text">${it.nombreCampana}${it.descripcion ? " — " + it.descripcion : ""}</span>
+      <span class="obs-note-detail">
+        <span class="obs-text">${escapeHtml(it.nombreCampana)}${it.descripcion ? " — " + escapeHtml(it.descripcion) : ""}</span>
+        ${it.completada ? `<span class="obs-note-meta">Marcada: ${it.completadaAt ? formatDateTime(it.completadaAt) : "Fecha no registrada"}</span>` : ""}
+      </span>
     </div>
   `).join("");
   modalBox.innerHTML = `
     <div class="modal-head">
       <div><div class="modal-eq-row">${equipoIcon(g.equipo)}<div class="modal-eq">${g.equipo}</div></div></div>
-      <span class="modal-state blue">Campañas pendientes</span>
+      <span class="modal-state blue">Campañas</span>
     </div>
-    <div class="modal-meta">${g.items.length} campaña${g.items.length === 1 ? "" : "s"} pendiente${g.items.length === 1 ? "" : "s"}</div>
+    <div class="modal-meta">${g.items.filter(item => !item.completada).length} pendientes · ${g.items.filter(item => item.completada).length} completadas</div>
     <div class="modal-meta" style="margin-top:2px;">Toca una para marcarla realizada</div>
     <div class="obs-list" style="margin-top:16px;">${itemsHtml}</div>
   `;
   modalBox.querySelectorAll(".obs-item.clickable").forEach(itemEl => {
     itemEl.addEventListener("click", () => {
-      if(itemEl.classList.contains("resolviendo")) return;
+      if(itemEl.classList.contains("updating")) return;
       const itemId = itemEl.dataset.itemId;
-      const texto = itemEl.querySelector(".obs-text").textContent;
-      itemEl.classList.add("resolviendo");
-      mostrarToast(`Campaña realizada — ${g.equipo}: ${texto}`);
-      setTimeout(() => {
-        if(itemEl.parentNode) itemEl.remove();
-        if(!modalBox.querySelector(".obs-item")) closeModal();
-      }, 260);
-      updateDoc(doc(db, CAMPANAS_COLLECTION, itemId), { completada: true, completadaAt: Date.now() }).catch(err => console.error(err));
+      const item = g.items.find(campaign => campaign.id === itemId);
+      if(!item) return;
+      const completada = !item.completada;
+      const completadaAt = completada ? Date.now() : null;
+      itemEl.classList.add("updating");
+      updateDoc(doc(db, CAMPANAS_COLLECTION, itemId), { completada, completadaAt })
+        .then(() => {
+          item.completada = completada;
+          item.completadaAt = completadaAt;
+          openCampanaModal(g);
+        })
+        .catch(err => {
+          console.error(err);
+          mostrarToast("No se pudo actualizar la campaña: " + err.message);
+        })
+        .finally(() => itemEl.classList.remove("updating"));
     });
   });
   modalBackdrop.classList.add("open");
@@ -1767,17 +1976,25 @@ function openCampanaModal(g){
 
 function renderCampanas(){
   renderCampanasHoy();
+  const nombresCompletos = new Set(
+    groupCampanasPorNombre(campanasDocs)
+      .filter(g => g.items.length > 0 && g.items.every(item => item.completada))
+      .map(g => g.nombre)
+  );
+  const docsVisibles = campanasBackupMode
+    ? campanasDocs.filter(c => nombresCompletos.has(c.nombreCampana))
+    : campanasDocs.filter(c => !nombresCompletos.has(c.nombreCampana));
   if(campanasViewMode === "grupo"){
-    const grupos = groupCampanasPorNombre(campanasDocs);
+    const grupos = groupCampanasPorNombre(docsVisibles);
     countCampanasEl.textContent = grupos.length;
     listCampanasEl.classList.toggle("roomy", grupos.length > 0 && grupos.length <= 4);
-    renderList(listCampanasEl, grupos, buildCampanaGroupCard, "Sin campañas creadas todavía.");
+    renderList(listCampanasEl, grupos, buildCampanaGroupCard, campanasBackupMode ? "Backup vacío: todavía no hay campañas completamente terminadas." : "Sin campañas en curso.");
     return;
   }
-  const grouped = groupCampanas(campanasDocs);
+  const grouped = groupCampanas(docsVisibles, campanasBackupMode ? "backup" : "pendientes");
   countCampanasEl.textContent = grouped.length;
   listCampanasEl.classList.toggle("roomy", grouped.length > 0 && grouped.length <= 4);
-  renderList(listCampanasEl, grouped, buildCampanaCard, "Sin campañas pendientes.");
+  renderList(listCampanasEl, grouped, buildCampanaCard, campanasBackupMode ? "Backup vacío: todavía no hay campañas completamente terminadas." : "Sin campañas pendientes.");
 }
 const qCampanas = query(collection(db, CAMPANAS_COLLECTION), orderBy("createdAt", "desc"));
 onSnapshot(qCampanas, (snap) => {
@@ -2067,6 +2284,25 @@ function esObservacionPendiente(valor){
   return normalizarTexto(valor) === "pendiente";
 }
 
+function identidadObservacionExcel(item){
+  const normalizarParte = value => String(value ?? "").normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, " ").toUpperCase();
+  return [
+    normalizarParte(item.equipo),
+    normalizarParte(item.ot),
+    normalizarParte(item.texto)
+  ].join("|");
+}
+
+function idObservacionExcel(identidad){
+  let hash = 14695981039346656037n;
+  for(const character of identidad){
+    hash ^= BigInt(character.codePointAt(0));
+    hash = BigInt.asUintN(64, hash * 1099511628211n);
+  }
+  return "excel-" + hash.toString(16).padStart(16, "0");
+}
+
 function filasObservacionPendiente(rows){
   const items = [];
   let incompletas = 0;
@@ -2076,12 +2312,13 @@ function filasObservacionPendiente(rows){
     const equipo = String(row[1] ?? "").trim().toUpperCase();
     const texto = String(row[3] ?? "").trim();
     const fechaAt = excelValorAFecha(row[0]);
-    const supervisor = String(row[5] ?? "").trim();
-    if(!equipo || !texto || fechaAt == null || !supervisor){
+    const ot = String(row[6] ?? "").trim();
+    if(!equipo || !texto || fechaAt == null){
       incompletas++;
       return;
     }
-    items.push({ equipo, texto, fechaAt, supervisor });
+    const supervisor = String(row[5] ?? "").trim();
+    items.push({ equipo, texto, fechaAt, ot, supervisor });
   });
   return { items, incompletas };
 }
@@ -2104,33 +2341,63 @@ obsUploadInputEl.addEventListener("change", async () => {
   obsUploadBtnEl.disabled = true;
   setObsUploadBtnEstado("Leyendo…", false);
   try {
+    if(!obsSnapshotReady) throw new Error("espera la sincronización con Firebase antes de cargar el Excel");
     const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
     const { rows, sheetName } = buscarTablaObservaciones(workbook);
     const { items: observaciones, incompletas } = filasObservacionPendiente(rows);
-    const items = observaciones.map(({ equipo, texto, fechaAt, supervisor }) => ({
-        equipo,
-        empresa: "",
-        ubicacion: "",
-        horometro: null,
-        texto,
-        fechaAt,
-        supervisor,
-        resuelta: false,
-        createdAt: Date.now()
-    }));
-    if(items.length === 0){
+    if(observaciones.length === 0){
       setObsUploadBtnEstado("Sin observaciones pendientes", false);
-      mostrarToast("No hay pendientes completos con fecha, equipo, observación y supervisor en la hoja OBS");
+      mostrarToast("No se cambió Firebase: el Excel no tiene filas pendientes completas");
       return;
     }
 
+    const itemsPorId = new Map();
+    observaciones.forEach(item => {
+      const identity = identidadObservacionExcel(item);
+      const id = idObservacionExcel(identity);
+      const previous = itemsPorId.get(id);
+      if(!previous || item.fechaAt > previous.fechaAt){
+        itemsPorId.set(id, { id, ...item });
+      }
+    });
+    const observacionesExistentes = new Map(obsDocs.map(item => [item.id, item]));
+    const items = [...itemsPorId.values()].map(({ id, equipo, texto, fechaAt, ot, supervisor }) => {
+      const existente = observacionesExistentes.get(id);
+      return {
+        id,
+        equipo,
+        empresa: existente?.empresa || "",
+        ubicacion: existente?.ubicacion || "",
+        horometro: existente?.horometro ?? null,
+        texto,
+        fechaAt,
+        ot,
+        supervisor,
+        resuelta: !!existente?.resuelta,
+        createdAt: existente?.createdAt || Date.now()
+      };
+    });
+
     for(let i = 0; i < items.length; i += 450){
       const batch = writeBatch(db);
-      items.slice(i, i + 450).forEach(item => batch.set(doc(collection(db, OBS_COLLECTION)), item));
+      items.slice(i, i + 450).forEach(item => {
+        const { id, ...data } = item;
+        batch.set(doc(db, OBS_COLLECTION, id), data);
+      });
       await batch.commit();
     }
-    setObsUploadBtnEstado(`${items.length} cargadas ✓`, false);
-    mostrarToast(`${items.length} observaciones cargadas${incompletas ? ` · ${incompletas} pendientes incompletas omitidas` : ""} desde ${sheetName}`);
+
+    const idsDelExcel = new Set(items.map(item => item.id));
+    const obsoletas = obsDocs.filter(item => !idsDelExcel.has(item.id));
+    for(let i = 0; i < obsoletas.length; i += 450){
+      const batch = writeBatch(db);
+      obsoletas.slice(i, i + 450).forEach(item => batch.delete(doc(db, OBS_COLLECTION, item.id)));
+      await batch.commit();
+    }
+
+    const duplicadas = observaciones.length - items.length;
+    setObsUploadBtnEstado(`${items.length} sincronizadas ✓`, false);
+    mostrarToast(`Firebase actualizado con ${items.length} observaciones de ${sheetName}${obsoletas.length ? ` · ${obsoletas.length} anteriores reemplazadas` : ""}${duplicadas ? ` · ${duplicadas} duplicadas omitidas` : ""}${incompletas ? ` · ${incompletas} incompletas omitidas` : ""}`);
   } catch(e){
     console.error(e);
     setObsUploadBtnEstado("Error al cargar Excel", true);
