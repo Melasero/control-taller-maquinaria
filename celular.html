@@ -211,6 +211,13 @@
   .ot-item.done{ background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.35); border-left-color: var(--green); }
   .ot-item.done .ot-eq{ color: var(--green); }
   .ot-item.done .ot-desc{ text-decoration: line-through; }
+  .campaign-status{
+    display:inline-block; margin-top:5px; padding:2px 7px; border-radius:999px;
+    font-size:9px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
+  }
+  .campaign-status.pending{ background:var(--yellow-dim); color:var(--yellow); }
+  .campaign-status.done{ background:var(--green-dim); color:var(--green); }
+  .campaign-status-time{ display:block; margin-top:4px; font:10px 'IBM Plex Mono', monospace; color:var(--text-faint); }
   .ot-main{ flex:1; min-width:0; }
   .ot-head{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
   .ot-eq{ font-weight:700; font-size:14.5px; }
@@ -259,6 +266,7 @@
     font-size:14px; color: var(--text);
   }
   .eq-picker-item input{ width:20px; height:20px; flex-shrink:0; accent-color: var(--accent); }
+  .eq-picker-item input:disabled{ accent-color: var(--green); }
   .eq-picker-footer{
     display:flex; align-items:center; justify-content:space-between; gap:12px;
     padding:14px 18px; border-top:1px solid var(--border); flex-shrink:0; background: var(--panel);
@@ -412,6 +420,12 @@
       <div class="hint" id="flotaCount">0 volquetes en la lista</div>
       <div class="hint">La TV usa esta lista para el contador circular: cuenta como "en mantenimiento" cualquiera de estos códigos que esté ahora en la columna "En mantenimiento", y el resto los muestra como operativos. Actualízala aquí cuando se dé de alta o de baja un volquete.</div>
     </div>
+    <div class="field">
+      <label for="fNuevosVolquetes">Agregar volquetes nuevos</label>
+      <textarea id="fNuevosVolquetes" rows="3" placeholder="Un código por línea&#10;Ej. CV-00480"></textarea>
+      <div class="hint">Se agregan a la flota actual sin borrar los códigos existentes. Los duplicados se omiten y se guarda al instante.</div>
+    </div>
+    <button class="btn primary" id="btnAgregarVolquetes" style="margin-bottom:12px;">Agregar a la flota</button>
     <button class="btn primary" id="btnPlan">Guardar</button>
     <div class="hint" id="planUltima" style="margin-top:14px; text-align:center;"></div>
 
@@ -496,7 +510,7 @@
 
 <div class="eq-picker-overlay" id="eqPickerOverlay">
   <div class="eq-picker-head">
-    <div class="eq-picker-title">Elegir equipos</div>
+    <div class="eq-picker-title" id="eqPickerTitle">Elegir equipos</div>
     <button type="button" class="eq-picker-close" id="eqPickerClose" aria-label="Cerrar">&times;</button>
   </div>
   <div class="field search" style="padding:0 18px; margin-top:14px;">
@@ -506,6 +520,7 @@
     <button type="button" id="eqPickerTodos">Marcar todos (filtrados)</button>
     <button type="button" id="eqPickerNinguno">Quitar todos</button>
   </div>
+  <div class="hint" id="eqPickerHint" style="padding:4px 18px 0;"></div>
   <div class="eq-picker-list" id="eqPickerList"></div>
   <div class="eq-picker-footer">
     <span id="eqPickerCount">0 seleccionados</span>
@@ -639,6 +654,7 @@ document.getElementById("btnObs").addEventListener("click", async () => {
   try {
     await addDoc(collection(db, OBS_COLLECTION), {
       equipo, empresa, ubicacion, horometro, texto,
+      origen: "manual",
       resuelta: false,
       createdAt: Date.now()
     });
@@ -764,6 +780,7 @@ function startObsAdd(rowEl, contextNota) {
         ubicacion: contextNota.ubicacion || "",
         horometro: contextNota.horometro != null ? contextNota.horometro : null,
         texto,
+        origen: "manual",
         resuelta: false,
         createdAt: Date.now()
       });
@@ -883,6 +900,7 @@ onSnapshot(qStandby, (snap) => {
 const planRef = doc(db, PLAN_COLLECTION, PLAN_DOC);
 const fPlanValor = document.getElementById("fPlanValor");
 const fFlotaVolquetes = document.getElementById("fFlotaVolquetes");
+const fNuevosVolquetes = document.getElementById("fNuevosVolquetes");
 const flotaCountEl = document.getElementById("flotaCount");
 const planUltimaEl = document.getElementById("planUltima");
 
@@ -897,6 +915,49 @@ function updateFlotaCount() {
   flotaCountEl.textContent = `${n} volquete${n === 1 ? "" : "s"} en la lista`;
 }
 fFlotaVolquetes.addEventListener("input", updateFlotaCount);
+
+function normalizarCodigoFlota(codigo) {
+  return codigo.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+document.getElementById("btnAgregarVolquetes").addEventListener("click", async () => {
+  const nuevos = fNuevosVolquetes.value.split(/\r?\n/).map((codigo) => codigo.trim().toUpperCase()).filter(Boolean);
+  if (nuevos.length === 0) {
+    showToast("Escribe al menos un código de equipo", "var(--red)");
+    return;
+  }
+
+  const flota = [...new Map(parseFlotaTextarea().map((codigo) => [normalizarCodigoFlota(codigo), codigo])).values()];
+  const codigosExistentes = new Set(flota.map(normalizarCodigoFlota));
+  const agregados = [];
+  nuevos.forEach((codigo) => {
+    const normalizado = normalizarCodigoFlota(codigo);
+    if (normalizado && !codigosExistentes.has(normalizado)) {
+      codigosExistentes.add(normalizado);
+      agregados.push(codigo);
+    }
+  });
+  if (agregados.length === 0) {
+    showToast("Esos códigos ya están en la flota", "var(--red)");
+    return;
+  }
+
+  const flotaActualizada = [...flota, ...agregados];
+  try {
+    await setDoc(
+      planRef,
+      { flotaVolquetes: flotaActualizada, totalVolquetes: flotaActualizada.length, actualizadoAt: Date.now() },
+      { merge: true }
+    );
+    flotaVolquetesActual = flotaActualizada;
+    fFlotaVolquetes.value = flotaActualizada.join("\n");
+    fNuevosVolquetes.value = "";
+    updateFlotaCount();
+    showToast(`${agregados.length} volquete${agregados.length === 1 ? "" : "s"} agregado${agregados.length === 1 ? "" : "s"} · ${flotaActualizada.length} en total`);
+  } catch (e) {
+    showToast("Error al agregar volquetes: " + e.message, "var(--red)");
+  }
+});
 
 onSnapshot(planRef, (snap) => {
   const data = snap.data();
@@ -1057,34 +1118,80 @@ function renderCampanaChecklist(g) {
   const hechas = items.filter((i) => i.completada).length;
   const desc = items[0] && items[0].descripcion;
   const rows = items.map((it) => `
-    <label class="ot-item${it.completada ? " done" : ""}">
+    <label class="ot-item campaign-item${it.completada ? " done" : ""}">
       <input type="checkbox" ${it.completada ? "checked" : ""} data-camp-id="${it.id}">
-      <div class="ot-main"><div class="ot-eq">${it.equipo}</div></div>
+      <div class="ot-main">
+        <div class="ot-eq">${it.equipo}</div>
+        <span class="campaign-status ${it.completada ? "done" : "pending"}">${it.completada ? "Realizada" : "Pendiente"}</span>
+        ${it.completada ? `<span class="campaign-status-time">${it.completadaAt ? formatDateTime(it.completadaAt) : "Fecha no registrada"}</span>` : ""}
+      </div>
     </label>
   `).join("");
   abAction.innerHTML = `
     ${desc ? `<div class="hint" style="margin-bottom:12px;">${desc}</div>` : ""}
     <div class="hint" style="margin-bottom:12px;">${hechas}/${items.length} equipos completados — toca el check de cada uno al terminar</div>
     <div class="edit-form" style="max-height:56vh;">${rows}</div>
+    <button class="edit-link" id="btnEditarEquiposCampana" style="color:var(--accent); margin-top:8px;">Editar equipos de la campaña</button>
     <button class="edit-link" id="btnCulminarCampana" style="color:var(--green); margin-top:14px;">✅ Culminar campaña</button>
+    <button class="edit-link" id="btnBorrarCampana" style="color:var(--red); margin-top:8px;">Borrar campaña completa</button>
   `;
   abAction.querySelectorAll("input[type=checkbox]").forEach((chk) => {
     chk.addEventListener("change", async () => {
       const completada = chk.checked;
       const it = items.find((x) => x.id === chk.dataset.campId);
+      const completadaAt = completada ? Date.now() : null;
       try {
         await updateDoc(doc(db, CAMPANAS_COLLECTION, chk.dataset.campId), {
           completada,
-          completadaAt: completada ? Date.now() : null
+          completadaAt
         });
-        if (it) it.completada = completada;
+        if (it) {
+          it.completada = completada;
+          it.completadaAt = completadaAt;
+        }
+        renderCampanaChecklist(g);
       } catch (e) {
         showToast("Error al guardar: " + e.message, "var(--red)");
         chk.checked = !completada;
       }
     });
   });
+  document.getElementById("btnEditarEquiposCampana").addEventListener("click", () => openEqPicker(g));
   document.getElementById("btnCulminarCampana").addEventListener("click", () => renderCampanaCulminarConfirm(g, items));
+  document.getElementById("btnBorrarCampana").addEventListener("click", () => renderCampanaBorrarConfirm(g));
+}
+
+function renderCampanaBorrarConfirm(g) {
+  abAction.innerHTML = `
+    <div class="hint" style="margin-bottom:16px; color:var(--red);">
+      Vas a borrar definitivamente la campaña <b>"${g.nombre}"</b> y sus ${g.items.length} registros de equipo. Esta acción no se puede deshacer y también eliminará los avances y fechas guardados.
+    </div>
+    <div class="confirm-row">
+      <button class="btn cancel" id="fBorrarCancel">Cancelar</button>
+      <button class="btn confirm red" id="fBorrarConfirmar">Sí, borrar campaña</button>
+    </div>
+  `;
+  document.getElementById("fBorrarCancel").addEventListener("click", () => renderCampanaChecklist(g));
+  document.getElementById("fBorrarConfirmar").addEventListener("click", async (event) => {
+    const confirmar = event.currentTarget;
+    confirmar.disabled = true;
+    try {
+      for (let offset = 0; offset < g.items.length; offset += 450) {
+        const batch = writeBatch(db);
+        g.items.slice(offset, offset + 450).forEach((item) => {
+          batch.delete(doc(db, CAMPANAS_COLLECTION, item.id));
+        });
+        await batch.commit();
+      }
+      campanasDocs = campanasDocs.filter((item) => !g.items.some((deleted) => deleted.id === item.id));
+      renderCampanaList();
+      closeActionbar();
+      showToast(`Campaña "${g.nombre}" borrada`);
+    } catch (e) {
+      confirmar.disabled = false;
+      showToast("Error al borrar la campaña: " + e.message, "var(--red)");
+    }
+  });
 }
 
 function renderCampanaCulminarConfirm(g, items) {
@@ -1175,7 +1282,16 @@ const eqPickerOverlayEl = document.getElementById("eqPickerOverlay");
 const eqPickerListEl = document.getElementById("eqPickerList");
 const eqPickerBuscarEl = document.getElementById("eqPickerBuscar");
 const eqPickerCountEl = document.getElementById("eqPickerCount");
+const eqPickerTitleEl = document.getElementById("eqPickerTitle");
+const eqPickerConfirmarEl = document.getElementById("eqPickerConfirmar");
+const eqPickerHintEl = document.getElementById("eqPickerHint");
 let eqPickerSeleccion = new Set();
+let eqPickerEditingCampaign = null;
+let eqPickerCompletedEquipment = new Set();
+
+function codigoEquipoCampanaNormalizado(codigo) {
+  return String(codigo || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
 
 function filtrarTodosLosEquipos() {
   const termino = eqPickerBuscarEl.value.trim().toLowerCase();
@@ -1186,7 +1302,7 @@ function filtrarTodosLosEquipos() {
 
 function actualizarEqPickerCount() {
   const n = eqPickerSeleccion.size;
-  eqPickerCountEl.textContent = `${n} seleccionado${n === 1 ? "" : "s"}`;
+  eqPickerCountEl.textContent = `${n} equipo${n === 1 ? "" : "s"} ${eqPickerEditingCampaign ? "en la campaña" : "seleccionado" + (n === 1 ? "" : "s")}`;
 }
 
 function renderEqPickerList() {
@@ -1201,7 +1317,7 @@ function renderEqPickerList() {
   eqPickerListEl.innerHTML = Object.keys(porFamilia).sort().map((fam) => {
     const items = porFamilia[fam].map((e) => `
       <label class="eq-picker-item">
-        <input type="checkbox" data-codigo="${e.codigo}" ${eqPickerSeleccion.has(e.codigo) ? "checked" : ""}>
+        <input type="checkbox" data-codigo="${e.codigo}" ${eqPickerSeleccion.has(codigoEquipoCampanaNormalizado(e.codigo)) ? "checked" : ""} ${eqPickerCompletedEquipment.has(codigoEquipoCampanaNormalizado(e.codigo)) ? "disabled" : ""}>
         <span>${e.codigo}</span>
       </label>
     `).join("");
@@ -1210,15 +1326,30 @@ function renderEqPickerList() {
 
   eqPickerListEl.querySelectorAll("input[type=checkbox]").forEach((chk) => {
     chk.addEventListener("change", () => {
-      if (chk.checked) eqPickerSeleccion.add(chk.dataset.codigo);
-      else eqPickerSeleccion.delete(chk.dataset.codigo);
+      const codigo = codigoEquipoCampanaNormalizado(chk.dataset.codigo);
+      if (chk.checked) eqPickerSeleccion.add(codigo);
+      else eqPickerSeleccion.delete(codigo);
       actualizarEqPickerCount();
     });
   });
 }
 
-function openEqPicker() {
+function openEqPicker(campana = null) {
+  eqPickerEditingCampaign = campana;
+  eqPickerCompletedEquipment = new Set();
   eqPickerSeleccion = new Set();
+  if (campana) {
+    campana.items.forEach((item) => {
+      const codigo = codigoEquipoCampanaNormalizado(item.equipo);
+      eqPickerSeleccion.add(codigo);
+      if (item.completada) eqPickerCompletedEquipment.add(codigo);
+    });
+  }
+  eqPickerTitleEl.textContent = campana ? `Editar equipos · ${campana.nombre}` : "Elegir equipos";
+  eqPickerConfirmarEl.textContent = campana ? "Guardar cambios" : "Crear campaña";
+  eqPickerHintEl.textContent = campana
+    ? "Puedes agregar equipos o quitar pendientes. Los equipos realizados se conservan."
+    : "";
   eqPickerBuscarEl.value = "";
   renderEqPickerList();
   actualizarEqPickerCount();
@@ -1231,12 +1362,13 @@ function closeEqPicker() {
 eqPickerBuscarEl.addEventListener("input", renderEqPickerList);
 document.getElementById("eqPickerClose").addEventListener("click", closeEqPicker);
 document.getElementById("eqPickerTodos").addEventListener("click", () => {
-  filtrarTodosLosEquipos().forEach((e) => eqPickerSeleccion.add(e.codigo));
+  filtrarTodosLosEquipos().forEach((e) => eqPickerSeleccion.add(codigoEquipoCampanaNormalizado(e.codigo)));
   renderEqPickerList();
   actualizarEqPickerCount();
 });
 document.getElementById("eqPickerNinguno").addEventListener("click", () => {
   eqPickerSeleccion.clear();
+  eqPickerCompletedEquipment.forEach((codigo) => eqPickerSeleccion.add(codigo));
   renderEqPickerList();
   actualizarEqPickerCount();
 });
@@ -1254,6 +1386,68 @@ document.getElementById("btnCampanaPersonalizada").addEventListener("click", () 
 });
 
 document.getElementById("eqPickerConfirmar").addEventListener("click", async () => {
+  if (eqPickerEditingCampaign) {
+    const campana = eqPickerEditingCampaign;
+    if (eqPickerSeleccion.size === 0) {
+      showToast("La campaña debe conservar al menos un equipo", "var(--red)");
+      return;
+    }
+    const existentesPorCodigo = new Map();
+    campana.items.forEach((item) => {
+      const codigo = codigoEquipoCampanaNormalizado(item.equipo);
+      if (!existentesPorCodigo.has(codigo)) existentesPorCodigo.set(codigo, []);
+      existentesPorCodigo.get(codigo).push(item);
+    });
+    const quitar = campana.items.filter((item) =>
+      !item.completada && !eqPickerSeleccion.has(codigoEquipoCampanaNormalizado(item.equipo))
+    );
+    const agregar = [...eqPickerSeleccion].filter((codigo) => !existentesPorCodigo.has(codigo));
+    if (quitar.length === 0 && agregar.length === 0) {
+      showToast("No hay cambios para guardar", "var(--red)");
+      return;
+    }
+
+    try {
+      const batch = writeBatch(db);
+      quitar.forEach((item) => batch.delete(doc(db, CAMPANAS_COLLECTION, item.id)));
+      const nuevos = agregar.map((codigo) => {
+        const equipo = todosLosEquiposActual.find((item) => codigoEquipoCampanaNormalizado(item.codigo) === codigo);
+        if (!equipo) throw new Error(`No se encontró el equipo ${codigo} en la lista disponible`);
+        const ref = doc(collection(db, CAMPANAS_COLLECTION));
+        const nuevo = {
+          id: ref.id,
+          nombreCampana: campana.nombre,
+          descripcion: campana.items[0]?.descripcion || "",
+          equipo: equipo.codigo,
+          completada: false,
+          completadaAt: null,
+          createdAt: Date.now()
+        };
+        batch.set(ref, {
+          nombreCampana: nuevo.nombreCampana,
+          descripcion: nuevo.descripcion,
+          equipo: nuevo.equipo,
+          completada: nuevo.completada,
+          completadaAt: nuevo.completadaAt,
+          createdAt: nuevo.createdAt
+        });
+        return nuevo;
+      });
+      await batch.commit();
+      campana.items = campana.items.filter((item) => !quitar.some((removido) => removido.id === item.id)).concat(nuevos);
+      campanasDocs = campanasDocs.filter((item) => !quitar.some((removido) => removido.id === item.id)).concat(nuevos);
+      eqPickerEditingCampaign = null;
+      eqPickerCompletedEquipment.clear();
+      closeEqPicker();
+      renderCampanaList();
+      renderCampanaChecklist(campana);
+      showToast(`Campaña actualizada: ${agregar.length} agregado${agregar.length === 1 ? "" : "s"} · ${quitar.length} quitado${quitar.length === 1 ? "" : "s"}`);
+    } catch (e) {
+      showToast("Error al actualizar la campaña: " + e.message, "var(--red)");
+    }
+    return;
+  }
+
   const nombreCampana = cNombreEl.value.trim();
   const descripcion = cDescripcionEl.value.trim();
   if (!nombreCampana) {
@@ -1265,7 +1459,11 @@ document.getElementById("eqPickerConfirmar").addEventListener("click", async () 
     return;
   }
   try {
-    const seleccionados = [...eqPickerSeleccion];
+    const seleccionados = [...eqPickerSeleccion].map((codigo) => {
+      const equipo = todosLosEquiposActual.find((item) => codigoEquipoCampanaNormalizado(item.codigo) === codigo);
+      if (!equipo) throw new Error(`No se encontró el equipo ${codigo} en la lista disponible`);
+      return equipo.codigo;
+    });
     const batch = writeBatch(db);
     seleccionados.forEach((equipo) => {
       const ref = doc(collection(db, CAMPANAS_COLLECTION));

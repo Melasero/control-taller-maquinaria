@@ -107,6 +107,10 @@ Ambos incluyen: Equipo, Empresa, Ubicación, Tipo de Falla, Fecha Ingreso, Fecha
 
 Es un dato independiente de los equipos — no pertenece a ningún documento de `equipos`, se lee y escribe directo desde la pestaña "Plan" del celular y se muestra en la tercera tarjeta de métricas de la TV.
 
+Para incorporar volquetes nuevos, la pestaña "Plan" permite pegar varios códigos y agregarlos a la lista existente. Se guardan al instante y se omiten los códigos ya incluidos (también si solo cambia el formato de guiones/espacios).
+
+También se pueden agregar volquetes desde la TV: abre la tarjeta **Volquetes Operativos** y usa **Agregar volquetes** en el panel de la flota. Acepta códigos `CV`, `CA`, `CL` y `CT`, uno por línea; los códigos duplicados se omiten.
+
 El sub-texto "X/Y OT cerradas hoy" y la flecha de tendencia que aparecen junto al % se calculan solos en `tv.html` a partir de los ingresos a taller (documentos de `equipos`) abiertos en la jornada actual — no son parte de este documento y no se editan a mano. (Este "OT cerradas hoy" es un conteo automático de ingresos del día, distinto de las OT del plan semanal descritas abajo.)
 
 ## OT del plan semanal (colección `otsPlan`)
@@ -135,7 +139,7 @@ Se cargan semana a semana desde la pestaña "Plan" del celular. Si existe al men
 | `completadaAt` | number \| null | Momento en que se marcó completada |
 | `createdAt` | number (ms) | Momento en que se creó ese ítem de la campaña |
 
-Al crear una campaña desde la pestaña "Campañas" del celular se genera **un documento por cada volquete de `flotaVolquetes`** (la lista de la pestaña Plan) — no hace falta elegir equipos uno por uno, siempre aplica a toda la flota. La TV muestra los pendientes agrupados por equipo en la columna "Campañas en Curso" (reemplaza a la antigua columna de Standby) y también dentro del tablero de pantalla completa de volquetes, con un resumen de avance por campaña y un contador por unidad.
+Al crear una campaña desde la pestaña "Campañas" del celular se genera **un documento por cada volquete de `flotaVolquetes`** (la lista de la pestaña Plan) — no hace falta elegir equipos uno por uno, siempre aplica a toda la flota. Las campañas personalizadas permiten elegir equipos manualmente. Al abrir una campaña activa en el celular, los equipos se distinguen visualmente como pendientes o realizados; la opción **Editar equipos de la campaña** permite agregar equipos y quitar pendientes, pero conserva los ya realizados. También se puede usar **Borrar campaña completa** para eliminar permanentemente todos sus documentos y avances; antes de hacerlo aparece una confirmación con el número de registros afectados. Al marcar un equipo como realizado desde el celular o la TV, se guarda automáticamente `completadaAt` con fecha y hora; la TV muestra ese sello en la tarjeta del equipo. En la vista de campaña de la TV, las tarjetas por equipo tienen un tono amarillo suave si están pendientes y verde suave si están realizadas. La TV muestra las campañas activas agrupadas por equipo o nombre. Cuando todos los equipos de una campaña están marcados como completados, queda disponible en el filtro **Backup**, junto al selector Lista/Grupo; sus documentos se conservan en Firestore.
 
 ## Observaciones (colección `observaciones`)
 
@@ -146,15 +150,21 @@ Al crear una campaña desde la pestaña "Campañas" del celular se genera **un d
 | `ubicacion` | string | Opcional |
 | `horometro` | number \| null | Lectura del horómetro al momento de anotar |
 | `texto` | string | La observación en sí |
-| `resuelta` | boolean | Siempre `false` al crearse; el documento se borra al marcarse resuelta desde el celular |
+| `fechaAt` | number (ms) \| omitido | Fecha original de la observación, importada de la columna A de la hoja `OBS` |
+| `ot` | string \| omitido | Orden de trabajo importada de la columna G de la hoja `OBS` |
+| `supervisor` | string \| omitido | Dato legado; la TV muestra la OT para las nuevas importaciones |
+| `origen` | string | `manual` si se registró desde el celular; `excel` si se importó desde la hoja OBS. En datos antiguos se reconoce el origen por el ID `excel-` de los registros importados |
+| `resuelta` | boolean | `false` al crearse; al tachar se guarda `true` y el documento se conserva en Firestore |
 | `createdAt` | number (ms) | Momento en que se registró |
 
-Son notas para un equipo que **sigue operativo en campo** (no está en mantenimiento ni en standby) — completamente independientes del flujo de `equipos`. Se crean y se resuelven desde la pestaña "Observación" del celular; la TV solo las agrupa por equipo y las muestra en modo lectura en la columna "Equipos con Observaciones".
+Son notas para un equipo que **sigue operativo en campo** (no está en mantenimiento ni en standby) — completamente independientes del flujo de `equipos`. Se crean desde la pestaña "Observación" del celular. El check tacha/restaura sin borrar; la pantalla del celular separa pendientes y tachadas, y el contador de la TV abre los filtros de pendientes, tachadas, todas, full tarjeta y manuales. El botón **Manual** de la columna también filtra directamente las observaciones ingresadas desde el celular. La caja junto a **Cargar Excel** filtra por código de equipo y admite variantes como `CV-00444`, `CV444` o `444`.
 
-También se pueden cargar observaciones en lote con el botón **Cargar Excel** de esa columna en `tv.html`. La importación usa únicamente la hoja `OBS` y requiere su estructura en las columnas A-H: `FECHA`, `CODIGO`, `FRENTE`, `OBS`, `TURNO`, `SUPERVISOR`, `OT`, `STATUS`. Solo se agregan filas con fecha en A, equipo en B, descripción en D, supervisor en F y el valor `PENDIENTE` en H; las filas sin esos datos, sin estado o con otro estado se ignoran. Al abrir el detalle en la TV, cada nota muestra la fecha de observación y el supervisor. Si no hay observaciones pendientes completas, no se escribe ningún documento en Firestore. Las filas importadas se agregan como observaciones pendientes; no se reemplazan las existentes.
+También se pueden sincronizar observaciones en lote con el botón **Cargar Excel** de esa columna en `tv.html`. La importación usa únicamente la hoja `OBS` y requiere su estructura en las columnas A-H: `FECHA`, `CODIGO`, `FRENTE`, `OBS`, `TURNO`, `SUPERVISOR`, `OT`, `STATUS`. Solo se cargan filas con fecha en A, equipo en B, descripción en D y el valor `PENDIENTE` en H; la OT de la columna G se guarda para las tarjetas y el detalle. Al subir un Excel con filas pendientes completas, Firebase queda sincronizado con esas filas: los registros que no estén en ese Excel (incluidas observaciones manuales y tachadas) se reemplazan. Los IDs deterministas usan equipo + OT + descripción (no la fecha), así dos filas del mismo equipo con el mismo texto y OT se consideran una observación; se conserva la fecha más reciente. Esto evita duplicados repetidos en días distintos y también al volver a subir el mismo archivo. Si el archivo válido no contiene ninguna fila pendiente completa, la carga no modifica Firebase. Al abrir el detalle en la TV, cada nota muestra la fecha y su OT.
 
 ## Logo en la TV
 
 `tv.html` carga `logo-stracon.png` (junto a `tv.html` en la misma carpeta) para el logo centrado en la barra superior. Si subes los archivos a GitHub, asegúrate de incluir ese PNG en el mismo repositorio.
 
 Tiempo en reparación = `operativoAt - ingresoAt`. Tiempo en standby = `(salidaAt || ahora) - operativoAt`. Tiempo total = `(salidaAt || ahora) - ingresoAt`.
+
+En la TV, el MTTR mensual se muestra por separado para volquetes (`CV`), el grupo de excavadoras `EX-00038`, `EX-00039`, `EX-00047`, `EX-00085` y `EX-00086`, y las demás excavadoras (`EX`). Cada promedio incluye las reparaciones cerradas durante el mes y las reparaciones que siguen abiertas, contando de estas últimas solo el tiempo transcurrido dentro del mes actual.
