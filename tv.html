@@ -837,7 +837,6 @@
 
 <script type="module">
 import { db } from "./firebase-init.js";
-import * as pdfjsLib from "./vendor/pdf.min.mjs";
 import {
   collection, doc, onSnapshot, query, orderBy, updateDoc, writeBatch, deleteDoc, arrayUnion
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
@@ -845,7 +844,6 @@ import {
   ESTADOS, PRIORIDADES, PLAN_COLLECTION, PLAN_DOC, OBS_COLLECTION, OT_PLAN_COLLECTION, CAMPANAS_COLLECTION, STANDBY_LIST_COLLECTION,
   formatHMS, formatHM, formatTime, formatDateTime, isoWeekInfo
 } from "./shared.js";
-pdfjsLib.GlobalWorkerOptions.workerSrc = "./vendor/pdf.worker.min.mjs";
 
 const DIAS = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -1750,6 +1748,8 @@ fleetPdfInputEl.addEventListener("change", async () => {
   let pdfDocument = null;
   try{
     if(!planVolquetesSnapshotReady) throw new Error("espera la sincronización de la flota antes de cargar el PDF");
+    const pdfjsLib = await import("./vendor/pdf.min.mjs");
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "./vendor/pdf.worker.min.mjs";
     pdfDocument = await pdfjsLib.getDocument({ data:new Uint8Array(await file.arrayBuffer()) }).promise;
     const { records, omittedDesmovilizado, omittedHourmeter, duplicates } = await leerFilasFlotaPdf(pdfDocument);
     const { nuevos } = await guardarHorometrosFlota(records);
