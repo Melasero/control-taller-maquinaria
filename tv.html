@@ -531,6 +531,7 @@
     text-transform:uppercase; letter-spacing:.03em; cursor:pointer; white-space:nowrap;
   }
   .board-overlay-action:hover{ background:var(--accent-dim); border-color:var(--accent); }
+  .board-overlay-action:disabled{ opacity:.6; cursor:wait; }
   .obs-filter-bar{ display:flex; align-items:center; gap:5px; flex-shrink:0; }
   .obs-filter-bar[hidden]{ display:none; }
   .obs-filter-btn{
@@ -655,6 +656,21 @@
   .bcard-camp-status{ display:flex; flex-direction:column; align-items:flex-end; gap:3px; margin-left:auto; text-align:right; }
   .bcard-check-label{ font-size:10.5px; color:var(--yellow); text-transform:uppercase; letter-spacing:0.04em; font-weight:700; }
   .bcard-check-time{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--green); white-space:nowrap; }
+  .bcard-hourmeter{
+    display:inline-flex; align-items:center; font:700 11px 'IBM Plex Mono',monospace; color:var(--accent);
+    background:var(--accent-dim); border:1px solid rgba(94,200,245,0.24); border-radius:999px;
+    padding:4px 8px; white-space:nowrap;
+  }
+  .bcard-hourmeter.high{
+    color:#f58a94; background:rgba(242,73,92,0.1); border-color:rgba(242,73,92,0.28);
+  }
+  .bcard.camp.high-hourmeter:not(.done){
+    background:linear-gradient(180deg, rgba(242,73,92,0.09), rgba(22,29,39,0.96));
+    border-color:rgba(242,73,92,0.26); border-left-color:rgba(242,73,92,0.8);
+  }
+  .bcard.camp.high-hourmeter:not(.done) .bcard-check-label{ color:#f58a94; }
+  .bcard.camp.high-hourmeter:not(.done) .bcard-hourmeter{ color:#f58a94; }
+  .bcard.camp.high-hourmeter.done{ border-color:rgba(52,211,153,0.2); border-left-color:var(--green-line); }
   .bcard.camp.updating{ opacity:0.65; pointer-events:none; }
   .bcard.camp.done .bcard-check-label{ color:var(--green); }
   .bcard.camp.done{
@@ -810,6 +826,10 @@
     <div class="board-overlay-sub" id="boardOverlaySub">—</div>
     <div class="board-overlay-hours" id="boardOverlayHours" hidden></div>
     <button type="button" class="board-overlay-action" id="boardOverlayAddVolq" hidden>+ Agregar volquetes</button>
+    <button type="button" class="board-overlay-action" id="boardOverlayUploadFleet" hidden title="Excel con columnas Equipo o Código y Horómetro o HM">Cargar Excel</button>
+    <input type="file" id="fleetExcelInput" accept=".xlsx,.xls" hidden>
+    <button type="button" class="board-overlay-action" id="boardOverlayUploadFleetPdf" hidden title="PDF de parque con COD INTERNO, Contrato_Gold y HOROMETRO">Cargar PDF</button>
+    <input type="file" id="fleetPdfInput" accept=".pdf,application/pdf" hidden>
     <button type="button" class="board-overlay-close" id="boardOverlayClose" aria-label="Cerrar">&times;</button>
   </div>
   <div class="board-overlay-grid" id="boardOverlayGrid"></div>
@@ -817,6 +837,7 @@
 
 <script type="module">
 import { db } from "./firebase-init.js";
+import * as pdfjsLib from "./vendor/pdf.min.mjs";
 import {
   collection, doc, onSnapshot, query, orderBy, updateDoc, writeBatch, deleteDoc, arrayUnion
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
@@ -824,6 +845,7 @@ import {
   ESTADOS, PRIORIDADES, PLAN_COLLECTION, PLAN_DOC, OBS_COLLECTION, OT_PLAN_COLLECTION, CAMPANAS_COLLECTION, STANDBY_LIST_COLLECTION,
   formatHMS, formatHM, formatTime, formatDateTime, isoWeekInfo
 } from "./shared.js";
+pdfjsLib.GlobalWorkerOptions.workerSrc = "./vendor/pdf.worker.min.mjs";
 
 const DIAS = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -1341,6 +1363,8 @@ function jornadaStart(ms){
 
 // ---------- contador circular de volquetes operativos (lista real de la flota) ----------
 let flotaVolquetes = []; // códigos exactos de los 57 volquetes activos (desde el Excel del parque de equipos)
+let horometrosVolquetes = {};
+let planVolquetesSnapshotReady = false;
 const volqGaugeFillEl = document.getElementById("volqGaugeFill");
 const volqNumEl = document.getElementById("volqNum");
 const volqSubEl = document.getElementById("volqSub");
@@ -1370,10 +1394,18 @@ const boardOverlaySubEl = document.getElementById("boardOverlaySub");
 const boardOverlayHoursEl = document.getElementById("boardOverlayHours");
 const boardOverlayGridEl = document.getElementById("boardOverlayGrid");
 const boardOverlayAddVolqEl = document.getElementById("boardOverlayAddVolq");
+const boardOverlayUploadFleetEl = document.getElementById("boardOverlayUploadFleet");
+const fleetExcelInputEl = document.getElementById("fleetExcelInput");
+const boardOverlayUploadFleetPdfEl = document.getElementById("boardOverlayUploadFleetPdf");
+const fleetPdfInputEl = document.getElementById("fleetPdfInput");
+let fullscreenCampanaNombre = null;
 function closeBoardOverlay(){
   boardOverlayEl.classList.remove("open", "obs-view");
   obsFilterBarEl.hidden = true;
   boardOverlayAddVolqEl.hidden = true;
+  boardOverlayUploadFleetEl.hidden = true;
+  boardOverlayUploadFleetPdfEl.hidden = true;
+  fullscreenCampanaNombre = null;
 }
 document.getElementById("boardOverlayClose").addEventListener("click", closeBoardOverlay);
 
@@ -1406,7 +1438,10 @@ function campanaSummaryHtml(){
 
 function openFlotaFullscreen(){
   planModalOpen = false;
+  fullscreenCampanaNombre = null;
   boardOverlayAddVolqEl.hidden = false;
+  boardOverlayUploadFleetEl.hidden = false;
+  boardOverlayUploadFleetPdfEl.hidden = false;
   boardOverlayTitleTextEl.textContent = "ESTADO DE FLOTA · VOLQUETES";
   boardOverlayHoursEl.hidden = true;
   const items = flotaVolquetes.slice().sort((a,b) => a.localeCompare(b, "es"));
@@ -1418,12 +1453,14 @@ function openFlotaFullscreen(){
     const tipo = tipoEquipoDe(code);
     const nCamp = campanasPendientesDe(code);
     const campBadge = nCamp > 0 ? `<span class="bcard-note-count" style="color:var(--accent); background:var(--accent-dim); align-self:auto;" title="${nCamp} campaña${nCamp === 1 ? "" : "s"} pendiente${nCamp === 1 ? "" : "s"}">&#128295; ${nCamp}</span>` : "";
+    const meterBadge = horometroVolqueteBadge(code);
     if(v){
       return `
         <div class="bcard mtto clickable" data-id="${v.id}">
           <div class="bcard-top"><span class="bcard-code">${code}</span><span class="bcard-tipo">${tipo.singular}</span></div>
           <div class="bcard-bottom">
             ${v.tipoFalla ? tipoFallaTag(v.tipoFalla) : `<span class="bcard-badge-mtto">En mantenimiento</span>`}
+            ${meterBadge}
             ${campBadge}
           </div>
           ${v.descripcionFalla ? `<div class="bcard-desc">${v.descripcionFalla}</div>` : ""}
@@ -1435,6 +1472,7 @@ function openFlotaFullscreen(){
         <div class="bcard-top"><span class="bcard-code">${code}</span><span class="bcard-tipo">${tipo.singular}</span></div>
         <div class="bcard-bottom">
           <span class="bcard-badge-op"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Operativo</span>
+          ${meterBadge}
           ${campBadge}
         </div>
       </div>
@@ -1453,6 +1491,284 @@ function openFlotaFullscreen(){
   boardOverlayEl.classList.add("open");
 }
 if(volqCardEl) volqCardEl.addEventListener("click", openFlotaFullscreen);
+
+function normalizarCodigoFlota(codigo){
+  return String(codigo ?? "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function horometroVolqueteBadge(code){
+  const horometro = horometrosVolquetes[normalizarCodigoFlota(code)];
+  if(!Number.isFinite(horometro)) return "";
+  const elevado = horometro >= 10000;
+  const formatted = new Intl.NumberFormat("es-PE", { maximumFractionDigits:1 }).format(horometro);
+  return `<span class="bcard-hourmeter${elevado ? " high" : ""}">${formatted} HM</span>`;
+}
+
+async function guardarHorometrosFlota(records){
+  if(!records.size) throw new Error("no hay lecturas de horómetro válidas para guardar");
+  const currentByCode = new Map(flotaVolquetes.map(code => [normalizarCodigoFlota(code), code]));
+  const nuevos = [];
+  const updates = {
+    actualizadoAt:Date.now(),
+    horometrosFlotaActualizadoAt:Date.now()
+  };
+  records.forEach(({ equipo, horometro }, codigo) => {
+    if(!currentByCode.has(codigo)){
+      currentByCode.set(codigo, equipo);
+      nuevos.push(equipo);
+    }
+    if(Number.isFinite(horometro) && horometro >= 0){
+      updates[`horometrosFlota.${codigo}`] = horometro;
+    }
+  });
+  if(nuevos.length) updates.flotaVolquetes = arrayUnion(...nuevos);
+  await updateDoc(doc(db, PLAN_COLLECTION, PLAN_DOC), updates);
+  flotaVolquetes = [...currentByCode.values()];
+  records.forEach(({ horometro }, codigo) => { horometrosVolquetes[codigo] = horometro; });
+  renderVolquetesGauge();
+  if(boardOverlayEl.classList.contains("open") && boardOverlayTitleTextEl.textContent === "ESTADO DE FLOTA · VOLQUETES"){
+    openFlotaFullscreen();
+  }
+  return { nuevos:nuevos.length };
+}
+
+function normalizarCabeceraExcel(valor){
+  return String(valor ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function columnaCodigoFlota(header){
+  const value = normalizarCabeceraExcel(header);
+  return ["eqp", "unidad"].includes(value) || value.startsWith("equipo") || value.includes("codigo");
+}
+
+function columnaHorometro(header){
+  const value = normalizarCabeceraExcel(header);
+  return value === "hm" || value === "hmet" || value.includes("horomet") || value.includes("hourmeter");
+}
+
+function parsearHorometroExcel(value){
+  if(typeof value === "number") return Number.isFinite(value) && value >= 0 ? value : null;
+  let text = String(value ?? "").trim().replace(/\s/g, "");
+  if(!text) return null;
+  text = text.replace(/[^\d,.-]/g, "");
+  if(text.includes(",") && text.includes(".")){
+    const decimal = text.lastIndexOf(",") > text.lastIndexOf(".") ? "," : ".";
+    const miles = decimal === "," ? /\./g : /,/g;
+    text = text.replace(miles, "").replace(decimal, ".");
+  }else if(text.includes(",") || text.includes(".")){
+    const separator = text.includes(",") ? "," : ".";
+    const parts = text.split(separator);
+    if(parts.length > 2 || parts.at(-1).length === 3) text = parts.join("");
+    else text = text.replace(separator, ".");
+  }
+  const parsed = Number(text);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function buscarDatosFlotaExcel(workbook){
+  for(const sheetName of workbook.SheetNames){
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header:1, raw:true, defval:"" });
+    for(let headerRow = 0; headerRow < Math.min(rows.length, 15); headerRow++){
+      const header = rows[headerRow] || [];
+      const codeColumn = header.findIndex(columnaCodigoFlota);
+      const hourmeterColumn = header.findIndex(columnaHorometro);
+      if(codeColumn < 0 || hourmeterColumn < 0) continue;
+      return { sheetName, rows, headerRow, codeColumn, hourmeterColumn };
+    }
+  }
+  throw new Error("No encontré columnas de Equipo/Código y Horómetro/HM en el Excel");
+}
+
+function leerFilasFlotaExcel(rows, headerRow, codeColumn, hourmeterColumn){
+  const acceptedPrefixes = new Set(["CV", "CA", "CL", "CT"]);
+  const records = new Map();
+  let omitted = 0;
+  let duplicates = 0;
+  for(const row of rows.slice(headerRow + 1)){
+    if(!row || row.every(cell => cell === "" || cell == null)) continue;
+    const equipo = String(row[codeColumn] ?? "").trim().toUpperCase();
+    const normalizado = normalizarCodigoFlota(equipo);
+    const prefix = /^([A-Z]+)/.exec(equipo)?.[1] || "";
+    const horometro = parsearHorometroExcel(row[hourmeterColumn]);
+    if(!equipo || !normalizado || !acceptedPrefixes.has(prefix) || !/^(CV|CA|CL|CT)[- ]?[A-Z0-9]+$/.test(equipo) || horometro == null){
+      omitted++;
+      continue;
+    }
+    if(records.has(normalizado)) duplicates++;
+    records.set(normalizado, { equipo, horometro });
+  }
+  if(records.size === 0) throw new Error("No hay filas válidas; revisa los códigos y las lecturas de horómetro");
+  return { records, omitted, duplicates };
+}
+
+function textoPdfNormalizado(value){
+  return String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function agruparLineasPdf(items){
+  const sorted = items.slice().sort((a,b) => b.y - a.y || a.x - b.x);
+  const lines = [];
+  sorted.forEach(item => {
+    let line = lines.find(candidate => Math.abs(candidate.y - item.y) <= 1.5);
+    if(!line){
+      line = { y:item.y, items:[] };
+      lines.push(line);
+    }
+    line.items.push(item);
+    line.y = line.items.reduce((sum, part) => sum + part.y, 0) / line.items.length;
+  });
+  return lines;
+}
+
+function cabecerasTablaFlotaPdf(items){
+  for(const line of agruparLineasPdf(items)){
+    const lineText = line.items.map(item => item.text).join(" ");
+    if(!textoPdfNormalizado(lineText).includes("codinterno")) continue;
+    const codigo = line.items.find(item => textoPdfNormalizado(item.text).includes("codinterno"));
+    const contrato = line.items.find(item => textoPdfNormalizado(item.text).includes("contratogold"));
+    const horometro = line.items.find(item => textoPdfNormalizado(item.text).includes("horometro"));
+    const fecha = line.items.find(item => textoPdfNormalizado(item.text).includes("fechaactual"));
+    if(!codigo || !contrato || !horometro) continue;
+    return {
+      codigoX:codigo.centerX,
+      contratoX:contrato.centerX,
+      horometroX:horometro.centerX,
+      fechaX:fecha ? fecha.centerX : null
+    };
+  }
+  return null;
+}
+
+async function leerFilasFlotaPdf(pdfDocument){
+  const records = new Map();
+  let omittedDesmovilizado = 0;
+  let omittedHourmeter = 0;
+  let duplicates = 0;
+  let codeRows = 0;
+  const codePattern = /^(CV|CA|CL|CT)[- ]?[A-Z0-9]+$/i;
+  const pageItems = [];
+  let defaultHeaders = null;
+
+  for(let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber++){
+    const page = await pdfDocument.getPage(pageNumber);
+    const content = await page.getTextContent();
+    const items = content.items
+      .filter(item => item.str && item.str.trim())
+      .map(item => ({
+        text:item.str.trim(),
+        x:item.transform[4],
+        y:item.transform[5],
+        centerX:item.transform[4] + item.width / 2
+      }));
+    const headers = cabecerasTablaFlotaPdf(items);
+    if(headers && !defaultHeaders) defaultHeaders = headers;
+    pageItems.push({ items, headers });
+  }
+  if(!defaultHeaders){
+    const hasText = pageItems.some(page => page.items.length > 0);
+    throw new Error(hasText
+      ? "El PDF no tiene una tabla con COD INTERNO, Contrato_Gold y HOROMETRO"
+      : "El PDF no contiene texto seleccionable; los PDF escaneados requieren OCR y no se pueden importar");
+  }
+
+  for(const page of pageItems){
+    const { items } = page;
+    const headers = page.headers || defaultHeaders;
+    const contractTolerance = headers.fechaX == null ? 55 : Math.abs(headers.fechaX - headers.contratoX) / 2;
+    const meterTolerance = headers.fechaX == null ? 55 : Math.abs(headers.horometroX - headers.fechaX) / 2;
+    for(const codeItem of items){
+      const equipo = codeItem.text.toUpperCase();
+      if(!codePattern.test(equipo) || Math.abs(codeItem.centerX - headers.codigoX) > 60) continue;
+      codeRows++;
+      const rowItems = items.filter(item => Math.abs(item.y - codeItem.y) <= 2);
+      const estadoContrato = rowItems
+        .filter(item => Math.abs(item.centerX - headers.contratoX) <= contractTolerance)
+        .sort((a,b) => Math.abs(a.centerX - headers.contratoX) - Math.abs(b.centerX - headers.contratoX))[0];
+      if(textoPdfNormalizado(estadoContrato?.text) === "desmovilizado"){
+        omittedDesmovilizado++;
+        continue;
+      }
+      const horometroItem = rowItems
+        .map(item => ({ item, value:parsearHorometroExcel(item.text) }))
+        .filter(entry => entry.value != null && Math.abs(entry.item.centerX - headers.horometroX) <= meterTolerance)
+        .sort((a,b) => Math.abs(a.item.centerX - headers.horometroX) - Math.abs(b.item.centerX - headers.horometroX))[0];
+      const codigo = normalizarCodigoFlota(equipo);
+      if(!horometroItem) omittedHourmeter++;
+      if(records.has(codigo)) duplicates++;
+      if(horometroItem || !records.has(codigo)){
+        records.set(codigo, { equipo, horometro:horometroItem?.value ?? null });
+      }
+    }
+  }
+  if(codeRows === 0) throw new Error("No se encontraron códigos de equipos de la flota en el PDF");
+  if(records.size === 0) throw new Error("No hay equipos válidos que no estén desmovilizados");
+  return { records, omittedDesmovilizado, omittedHourmeter, duplicates };
+}
+
+boardOverlayUploadFleetEl.addEventListener("click", (event) => {
+  event.stopPropagation();
+  fleetExcelInputEl.value = "";
+  fleetExcelInputEl.click();
+});
+fleetExcelInputEl.addEventListener("click", (event) => event.stopPropagation());
+fleetExcelInputEl.addEventListener("change", async () => {
+  const file = fleetExcelInputEl.files[0];
+  if(!file) return;
+  boardOverlayUploadFleetEl.disabled = true;
+  boardOverlayUploadFleetEl.textContent = "Leyendo Excel…";
+  try{
+    if(!planVolquetesSnapshotReady) throw new Error("espera la sincronización de la flota antes de cargar el Excel");
+    const workbook = XLSX.read(await file.arrayBuffer(), { type:"array", cellDates:true });
+    const { sheetName, rows, headerRow, codeColumn, hourmeterColumn } = buscarDatosFlotaExcel(workbook);
+    const { records, omitted, duplicates } = leerFilasFlotaExcel(rows, headerRow, codeColumn, hourmeterColumn);
+    const { nuevos } = await guardarHorometrosFlota(records);
+    const totalHours = records.size;
+    mostrarToast(`${totalHours} horómetros cargados · ${nuevos} equipos agregados${duplicates ? ` · ${duplicates} duplicados consolidados` : ""}${omitted ? ` · ${omitted} filas omitidas` : ""} (${sheetName})`);
+  }catch(err){
+    console.error(err);
+    mostrarToast(`No se pudo cargar el Excel: ${err.message}`);
+  }finally{
+    boardOverlayUploadFleetEl.disabled = false;
+    boardOverlayUploadFleetEl.textContent = "Cargar Excel";
+    fleetExcelInputEl.value = "";
+  }
+});
+
+boardOverlayUploadFleetPdfEl.addEventListener("click", (event) => {
+  event.stopPropagation();
+  fleetPdfInputEl.value = "";
+  fleetPdfInputEl.click();
+});
+fleetPdfInputEl.addEventListener("click", (event) => event.stopPropagation());
+fleetPdfInputEl.addEventListener("change", async () => {
+  const file = fleetPdfInputEl.files[0];
+  if(!file) return;
+  boardOverlayUploadFleetPdfEl.disabled = true;
+  boardOverlayUploadFleetPdfEl.textContent = "Leyendo PDF…";
+  let pdfDocument = null;
+  try{
+    if(!planVolquetesSnapshotReady) throw new Error("espera la sincronización de la flota antes de cargar el PDF");
+    pdfDocument = await pdfjsLib.getDocument({ data:new Uint8Array(await file.arrayBuffer()) }).promise;
+    const { records, omittedDesmovilizado, omittedHourmeter, duplicates } = await leerFilasFlotaPdf(pdfDocument);
+    const { nuevos } = await guardarHorometrosFlota(records);
+    mostrarToast(`${records.size} equipos cargados · ${nuevos} equipos agregados${omittedDesmovilizado ? ` · ${omittedDesmovilizado} desmovilizados excluidos` : ""}${omittedHourmeter ? ` · ${omittedHourmeter} sin horómetro` : ""}${duplicates ? ` · ${duplicates} duplicados consolidados` : ""}`);
+  }catch(err){
+    console.error(err);
+    mostrarToast(`No se pudo cargar el PDF: ${err.message}`);
+  }finally{
+    try{
+      if(pdfDocument) await pdfDocument.destroy();
+    }catch(cleanupError){
+      console.error("No se pudo cerrar el documento PDF", cleanupError);
+    }finally{
+      boardOverlayUploadFleetPdfEl.disabled = false;
+      boardOverlayUploadFleetPdfEl.textContent = "Cargar PDF";
+      fleetPdfInputEl.value = "";
+    }
+  }
+});
 
 boardOverlayAddVolqEl.addEventListener("click", (e) => {
   e.stopPropagation();
@@ -1515,7 +1831,10 @@ boardOverlayAddVolqEl.addEventListener("click", (e) => {
 // ---------- pantalla completa: todos los equipos "En mantenimiento" ----------
 function openMantenimientoFullscreen(){
   planModalOpen = false;
+  fullscreenCampanaNombre = null;
   boardOverlayAddVolqEl.hidden = true;
+  boardOverlayUploadFleetEl.hidden = true;
+  boardOverlayUploadFleetPdfEl.hidden = true;
   boardOverlayHoursEl.hidden = true;
   boardOverlayTitleTextEl.textContent = "EQUIPOS EN MANTENIMIENTO";
   const items = fleet
@@ -1547,7 +1866,10 @@ countFallaEl.addEventListener("click", (e) => { e.stopPropagation(); openManteni
 // ---------- pantalla completa: todos los "Equipos con Observaciones" ----------
 function openObservacionesFullscreen(){
   planModalOpen = false;
+  fullscreenCampanaNombre = null;
   boardOverlayAddVolqEl.hidden = true;
+  boardOverlayUploadFleetEl.hidden = true;
+  boardOverlayUploadFleetPdfEl.hidden = true;
   boardOverlayHoursEl.hidden = true;
   boardOverlayEl.classList.add("obs-view");
   obsFilterBarEl.hidden = false;
@@ -1998,7 +2320,10 @@ function buildCampanaGroupCard(g){
 
 function openCampanaFullscreen(nombreCampana){
   planModalOpen = false;
+  fullscreenCampanaNombre = nombreCampana;
   boardOverlayAddVolqEl.hidden = true;
+  boardOverlayUploadFleetEl.hidden = true;
+  boardOverlayUploadFleetPdfEl.hidden = true;
   boardOverlayHoursEl.hidden = true;
   const items = campanasDocs
     .filter(c => c.nombreCampana === nombreCampana)
@@ -2015,18 +2340,26 @@ function openCampanaFullscreen(nombreCampana){
   };
   actualizarSub();
 
-  boardOverlayGridEl.innerHTML = items.map(it => `
-    <div class="bcard camp clickable${it.completada ? " done" : ""}" data-id="${it.id}">
+  boardOverlayGridEl.innerHTML = items.map(it => {
+    const horometro = horometrosVolquetes[normalizarCodigoFlota(it.equipo)];
+    const horometroElevado = Number.isFinite(horometro) && horometro >= 10000;
+    const horometroHtml = Number.isFinite(horometro)
+      ? `<span class="bcard-hourmeter">${new Intl.NumberFormat("es-PE", { maximumFractionDigits:1 }).format(horometro)} HM</span>`
+      : "";
+    return `
+    <div class="bcard camp clickable${it.completada ? " done" : ""}${horometroElevado ? " high-hourmeter" : ""}" data-id="${it.id}">
       <div class="bcard-top"><span class="bcard-code">${it.equipo}</span><span class="bcard-tipo">${tipoEquipoDe(it.equipo).singular}</span></div>
       <div class="bcard-bottom">
         <span class="bcard-check">${it.completada ? "&#10003;" : ""}</span>
+        ${horometroHtml}
         <span class="bcard-camp-status">
           <span class="bcard-check-label">${it.completada ? "Realizada" : "Pendiente"}</span>
           ${it.completada ? `<span class="bcard-check-time">${it.completadaAt ? formatDateTime(it.completadaAt) : "Fecha no registrada"}</span>` : ""}
         </span>
       </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
 
   boardOverlayGridEl.querySelectorAll(".bcard.camp").forEach(row => {
     row.addEventListener("click", async () => {
@@ -2275,10 +2608,18 @@ onSnapshot(doc(db, PLAN_COLLECTION, PLAN_DOC), (snap) => {
   flotaVolquetes = data && Array.isArray(data.flotaVolquetes)
     ? data.flotaVolquetes.map(c => String(c).trim().toUpperCase()).filter(Boolean)
     : [];
+  horometrosVolquetes = data && data.horometrosFlota && typeof data.horometrosFlota === "object"
+    ? Object.fromEntries(Object.entries(data.horometrosFlota)
+      .map(([code, value]) => [normalizarCodigoFlota(code), Number(value)])
+      .filter(([code, value]) => code && Number.isFinite(value) && value >= 0))
+    : {};
+  planVolquetesSnapshotReady = true;
   renderVolquetesGauge();
   renderPlanAvance();
   if(boardOverlayEl.classList.contains("open") && boardOverlayTitleTextEl.textContent === "ESTADO DE FLOTA · VOLQUETES"){
     openFlotaFullscreen();
+  }else if(boardOverlayEl.classList.contains("open") && fullscreenCampanaNombre){
+    openCampanaFullscreen(fullscreenCampanaNombre);
   }
 }, (err) => console.error(err));
 
